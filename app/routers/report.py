@@ -117,3 +117,32 @@ async def download_csv(request: ReportRequest):
         )
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/suggest")
+async def suggest_structure(request: ReportRequest):
+    """
+    Анализирует данные и предлагает колонки для группировки и агрегации.
+    """
+    try:
+        df = pd.read_csv("data/homes.csv")
+        df = DataProcessor.clean_data(df)
+
+        numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
+        categorical_cols = (
+            df.select_dtypes(include=['object', 'category'])
+            .columns.tolist()
+        )
+
+        return {
+            "categorical_columns": categorical_cols,
+            "numeric_columns": numeric_cols,
+            "suggested_group_by": (
+                categorical_cols[:3] if categorical_cols else []
+            ),
+            "suggested_aggregate": (
+                numeric_cols[:3] if numeric_cols else []
+            )
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
