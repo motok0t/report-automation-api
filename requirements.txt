@@ -1,6 +1,9 @@
 fastapi
-uvicorn
-pandas
+httpx
 openpyxl
+pandas
+pyarrow
 pydantic
+pytest
 python-multipart
+uvicorn

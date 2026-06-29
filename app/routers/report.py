@@ -1,16 +1,25 @@
+import logging
+
 import pandas as pd
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import FileResponse
 
 from app.schemas.report_schemas import ReportRequest, ReportResponse
 from app.services.data_processor import DataProcessor
 from app.utils.validators import validate_aggregation_params
 
+
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/report", tags=["Report"])
 
 
 @router.post("/summary", response_model=ReportResponse)
 async def generate_summary(request: ReportRequest):
     try:
+        logger.info(
+            f"Generating report: group_by={request.group_by}, "
+            f"agg={request.aggregation.value}"
+        )
         df = pd.read_csv("data/homes.csv")
         df = DataProcessor.clean_data(df)
 
@@ -46,6 +55,7 @@ async def generate_summary(request: ReportRequest):
                 if hasattr(value, 'item'):
                     row[key] = value.item()
 
+        logger.info(f"Report generated: {len(data)} rows")
         return ReportResponse(
             status="success",
             data=data,
@@ -58,6 +68,52 @@ async def generate_summary(request: ReportRequest):
                 'mean_value': float(stats['mean_value']),
                 'std_value': float(stats['std_value'])
             }
+        )
+    except ValueError as e:
+        logger.error(f"Validation error: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except FileNotFoundError:
+        logger.error("Data file not found")
+        raise HTTPException(status_code=404, detail="Data file not found")
+    except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.post("/download/csv")
+async def download_csv(request: ReportRequest):
+    """Generate report and return as CSV file."""
+    try:
+        df = pd.read_csv("data/homes.csv")
+        df = DataProcessor.clean_data(df)
+
+        validate_aggregation_params(
+            df,
+            request.group_by,
+            request.aggregate_column
+        )
+
+        if request.filter_column and request.filter_value:
+            df = DataProcessor.filter_data(
+                df,
+                request.filter_column,
+                request.filter_value
+            )
+
+        result = DataProcessor.aggregate_data(
+            df,
+            request.group_by,
+            request.aggregate_column,
+            request.aggregation.value
+        )
+
+        output_path = "generated_reports/report.csv"
+        result.to_csv(output_path, index=False)
+
+        return FileResponse(
+            path=output_path,
+            filename="report.csv",
+            media_type="text/csv"
         )
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

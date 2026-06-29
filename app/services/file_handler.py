@@ -1,3 +1,4 @@
+import json
 import os
 import tempfile
 from typing import Any, Dict
@@ -7,11 +8,11 @@ from fastapi import UploadFile
 
 
 class FileHandler:
-    """Класс для работы с загруженными файлами."""
+    """File upload and processing utilities."""
 
     @staticmethod
     async def read_file(file: UploadFile) -> pd.DataFrame:
-        """Читает CSV или Excel файл в pandas DataFrame."""
+        """Read CSV, Excel, JSON or Parquet file into DataFrame."""
         contents = await file.read()
         suffix = os.path.splitext(file.filename)[1]
         temp_file = tempfile.NamedTemporaryFile(
@@ -25,9 +26,15 @@ class FileHandler:
             df = pd.read_csv(temp_file.name)
         elif file.filename.endswith(('.xlsx', '.xls')):
             df = pd.read_excel(temp_file.name)
+        elif file.filename.endswith('.json'):
+            with open(temp_file.name, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            df = pd.DataFrame(data)
+        elif file.filename.endswith('.parquet'):
+            df = pd.read_parquet(temp_file.name)
         else:
             raise ValueError(
-                "Unsupported format. Use CSV or Excel."
+                "Unsupported format. Use CSV, Excel, JSON or Parquet."
             )
 
         os.unlink(temp_file.name)
@@ -35,7 +42,7 @@ class FileHandler:
 
     @staticmethod
     def save_report(df: pd.DataFrame, filename: str = "report.xlsx") -> str:
-        """Сохраняет DataFrame в Excel и возвращает путь."""
+        """Save DataFrame to Excel file and return file path."""
         output_dir = "generated_reports"
         os.makedirs(output_dir, exist_ok=True)
 
@@ -45,7 +52,7 @@ class FileHandler:
 
     @staticmethod
     def get_file_info(df: pd.DataFrame) -> Dict[str, Any]:
-        """Возвращает информацию о DataFrame."""
+        """Return rows, columns, dtypes and memory usage of DataFrame."""
         return {
             "rows": len(df),
             "columns": len(df.columns),
