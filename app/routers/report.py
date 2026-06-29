@@ -18,7 +18,8 @@ async def generate_summary(request: ReportRequest):
     try:
         logger.info(
             f"Generating report: group_by={request.group_by}, "
-            f"agg={[a.value for a in request.aggregation]}"
+            f"agg={[a.value for a in request.aggregation]}, "
+            f"outliers={request.detect_outliers}"
         )
         df = pd.read_csv("data/homes.csv")
         df = DataProcessor.clean_data(df)
@@ -35,6 +36,9 @@ async def generate_summary(request: ReportRequest):
                 request.filter_column,
                 request.filter_value
             )
+
+        if request.detect_outliers:
+            df = DataProcessor.detect_outliers(df, request.aggregate_column)
 
         agg_list = [a.value for a in request.aggregation]
         result = DataProcessor.aggregate_data(
@@ -61,14 +65,7 @@ async def generate_summary(request: ReportRequest):
             status="success",
             data=data,
             total_rows=len(result),
-            summary={
-                'total_rows': int(stats['total_rows']),
-                'groups': int(stats['groups']),
-                'min_value': float(stats['min_value']),
-                'max_value': float(stats['max_value']),
-                'mean_value': float(stats['mean_value']),
-                'std_value': float(stats['std_value'])
-            }
+            summary=stats
         )
     except ValueError as e:
         logger.error(f"Validation error: {str(e)}")
@@ -100,6 +97,9 @@ async def download_csv(request: ReportRequest):
                 request.filter_column,
                 request.filter_value
             )
+
+        if request.detect_outliers:
+            df = DataProcessor.detect_outliers(df, request.aggregate_column)
 
         agg_list = [a.value for a in request.aggregation]
         result = DataProcessor.aggregate_data(

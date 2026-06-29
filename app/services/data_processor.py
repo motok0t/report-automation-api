@@ -26,9 +26,6 @@ class DataProcessor:
         aggregate_column: str,
         aggregations: List[str]
     ) -> pd.DataFrame:
-        """
-        Агрегирует данные по указанной колонке с несколькими метриками.
-        """
         grouped = df.groupby(group_by)[aggregate_column]
         result = grouped.agg(aggregations).reset_index()
 
@@ -55,11 +52,37 @@ class DataProcessor:
         group_by: str,
         aggregate_column: str
     ) -> Dict[str, Any]:
+        mean = df[aggregate_column].mean()
+        std = df[aggregate_column].std()
+        lower_bound = mean - 2 * std
+        upper_bound = mean + 2 * std
+        has_outliers = (
+            (df[aggregate_column] < lower_bound) |
+            (df[aggregate_column] > upper_bound)
+        ).any()
+
         return {
             'total_rows': int(len(df)),
             'groups': int(df[group_by].nunique()),
             'min_value': float(df[aggregate_column].min()),
             'max_value': float(df[aggregate_column].max()),
-            'mean_value': float(df[aggregate_column].mean()),
-            'std_value': float(df[aggregate_column].std())
+            'mean_value': float(mean),
+            'std_value': float(std),
+            'has_outliers': bool(has_outliers)
         }
+
+    @staticmethod
+    def detect_outliers(
+        df: pd.DataFrame,
+        aggregate_column: str,
+        threshold: float = 2.0
+    ) -> pd.DataFrame:
+        mean = df[aggregate_column].mean()
+        std = df[aggregate_column].std()
+        lower_bound = mean - threshold * std
+        upper_bound = mean + threshold * std
+        df['is_outlier'] = (
+            (df[aggregate_column] < lower_bound) |
+            (df[aggregate_column] > upper_bound)
+        )
+        return df

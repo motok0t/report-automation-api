@@ -18,6 +18,7 @@ class ReportRequest(BaseModel):
     aggregation: List[AggregationType] = [AggregationType.SUM]
     filter_column: Optional[str] = None
     filter_value: Optional[str] = None
+    detect_outliers: bool = False
 
 
 class ReportResponse(BaseModel):
