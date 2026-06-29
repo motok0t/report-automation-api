@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import pandas as pd
 
@@ -8,13 +8,6 @@ class DataProcessor:
 
     @staticmethod
     def clean_data(df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Выполняет базовую очистку данных:
-        - Удаление дубликатов
-        - Заполнение пропусков в числах (медианой)
-        - Заполнение пропусков в строках ('unknown')
-        - Удаление пустых строк
-        """
         df = df.drop_duplicates()
         df = df.dropna(how='all')
 
@@ -31,25 +24,13 @@ class DataProcessor:
         df: pd.DataFrame,
         group_by: str,
         aggregate_column: str,
-        aggregation: str = 'sum'
+        aggregations: List[str]
     ) -> pd.DataFrame:
         """
-        Агрегирует данные по указанной колонке.
+        Агрегирует данные по указанной колонке с несколькими метриками.
         """
         grouped = df.groupby(group_by)[aggregate_column]
-
-        if aggregation == 'sum':
-            result = grouped.sum().reset_index()
-        elif aggregation == 'mean':
-            result = grouped.mean().reset_index()
-        elif aggregation == 'count':
-            result = grouped.count().reset_index()
-        elif aggregation == 'min':
-            result = grouped.min().reset_index()
-        elif aggregation == 'max':
-            result = grouped.max().reset_index()
-        else:
-            raise ValueError(f"Unknown aggregation: {aggregation}")
+        result = grouped.agg(aggregations).reset_index()
 
         for col in result.columns:
             dtype = result[col].dtype.name
@@ -66,7 +47,6 @@ class DataProcessor:
         column: str,
         value: Any
     ) -> pd.DataFrame:
-        """Фильтрует данные по значению."""
         return df[df[column] == value]
 
     @staticmethod
@@ -75,12 +55,11 @@ class DataProcessor:
         group_by: str,
         aggregate_column: str
     ) -> Dict[str, Any]:
-        """Возвращает сводную статистику."""
         return {
-            'total_rows': len(df),
-            'groups': df[group_by].nunique(),
-            'min_value': df[aggregate_column].min(),
-            'max_value': df[aggregate_column].max(),
-            'mean_value': df[aggregate_column].mean(),
-            'std_value': df[aggregate_column].std()
+            'total_rows': int(len(df)),
+            'groups': int(df[group_by].nunique()),
+            'min_value': float(df[aggregate_column].min()),
+            'max_value': float(df[aggregate_column].max()),
+            'mean_value': float(df[aggregate_column].mean()),
+            'std_value': float(df[aggregate_column].std())
         }

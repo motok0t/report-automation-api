@@ -5,17 +5,17 @@ from pydantic import BaseModel
 
 
 class AggregationType(str, Enum):
-    sum = "sum"
-    mean = "mean"
-    count = "count"
-    min = "min"
-    max = "max"
+    SUM = "sum"
+    MEAN = "mean"
+    COUNT = "count"
+    MIN = "min"
+    MAX = "max"
 
 
 class ReportRequest(BaseModel):
     group_by: str
     aggregate_column: str
-    aggregation: AggregationType = AggregationType.sum
+    aggregation: List[AggregationType] = [AggregationType.SUM]
     filter_column: Optional[str] = None
     filter_value: Optional[str] = None
 

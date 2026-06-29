@@ -18,7 +18,7 @@ async def generate_summary(request: ReportRequest):
     try:
         logger.info(
             f"Generating report: group_by={request.group_by}, "
-            f"agg={request.aggregation.value}"
+            f"agg={[a.value for a in request.aggregation]}"
         )
         df = pd.read_csv("data/homes.csv")
         df = DataProcessor.clean_data(df)
@@ -36,11 +36,12 @@ async def generate_summary(request: ReportRequest):
                 request.filter_value
             )
 
+        agg_list = [a.value for a in request.aggregation]
         result = DataProcessor.aggregate_data(
             df,
             request.group_by,
             request.aggregate_column,
-            request.aggregation.value
+            agg_list
         )
 
         stats = DataProcessor.get_summary_stats(
@@ -100,11 +101,12 @@ async def download_csv(request: ReportRequest):
                 request.filter_value
             )
 
+        agg_list = [a.value for a in request.aggregation]
         result = DataProcessor.aggregate_data(
             df,
             request.group_by,
             request.aggregate_column,
-            request.aggregation.value
+            agg_list
         )
 
         output_path = "generated_reports/report.csv"
