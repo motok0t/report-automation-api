@@ -1,8 +1,10 @@
 import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.routers import upload, report
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -26,6 +28,9 @@ app.add_middleware(
 
 app.include_router(upload.router)
 app.include_router(report.router)
+
+app.mount("/", StaticFiles(directory="app/static", html=True), name="static")
+
 
 @app.get("/")
 async def root():

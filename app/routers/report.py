@@ -16,6 +16,7 @@ router = APIRouter(prefix="/report", tags=["Report"])
 
 @router.post("/summary", response_model=ReportResponse)
 async def generate_summary(request: ReportRequest):
+    """Generate aggregated report with summary statistics."""
     try:
         logger.info(
             f"Generating report: group_by={request.group_by}, "
@@ -52,7 +53,8 @@ async def generate_summary(request: ReportRequest):
         stats = DataProcessor.get_summary_stats(
             df,
             request.group_by,
-            request.aggregate_column
+            request.aggregate_column,
+            request.detect_outliers
         )
 
         data = result.to_dict(orient="records")
@@ -110,6 +112,7 @@ async def download_csv(request: ReportRequest):
             agg_list
         )
 
+        os.makedirs("generated_reports", exist_ok=True)
         output_path = "generated_reports/report.csv"
         result.to_csv(output_path, index=False)
 
@@ -125,7 +128,7 @@ async def download_csv(request: ReportRequest):
 @router.post("/suggest")
 async def suggest_structure(request: ReportRequest):
     """
-    Анализирует данные и предлагает колонки для группировки и агрегации.
+    Analyze data and suggest columns for grouping and aggregation.
     """
     try:
         df = pd.read_csv("data/homes.csv")
