@@ -1,4 +1,5 @@
 import logging
+import os
 
 import pandas as pd
 from fastapi import APIRouter, HTTPException
@@ -146,5 +147,52 @@ async def suggest_structure(request: ReportRequest):
                 numeric_cols[:3] if numeric_cols else []
             )
         }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/download/excel")
+async def download_excel(request: ReportRequest):
+    """Generate report and return as Excel file."""
+    try:
+        df = pd.read_csv("data/homes.csv")
+        df = DataProcessor.clean_data(df)
+
+        validate_aggregation_params(
+            df,
+            request.group_by,
+            request.aggregate_column
+        )
+
+        if request.filter_column and request.filter_value:
+            df = DataProcessor.filter_data(
+                df,
+                request.filter_column,
+                request.filter_value
+            )
+
+        if request.detect_outliers:
+            df = DataProcessor.detect_outliers(df, request.aggregate_column)
+
+        agg_list = [a.value for a in request.aggregation]
+        result = DataProcessor.aggregate_data(
+            df,
+            request.group_by,
+            request.aggregate_column,
+            agg_list
+        )
+
+        os.makedirs("generated_reports", exist_ok=True)
+        output_path = "generated_reports/report.xlsx"
+        result.to_excel(output_path, index=False)
+
+        return FileResponse(
+            path=output_path,
+            filename="report.xlsx",
+            media_type=(
+                "application/vnd.openxmlformats-officedocument."
+                "spreadsheetml.sheet"
+            )
+        )
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
