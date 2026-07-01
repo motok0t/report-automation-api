@@ -7,6 +7,7 @@ client = TestClient(app)
 
 
 def test_upload():
+    """Test file upload endpoint."""
     with open("data/homes.csv", "rb") as f:
         response = client.post(
             "/upload/",
@@ -20,6 +21,7 @@ def test_upload():
 
 
 def test_report_summary():
+    """Test summary report generation endpoint."""
     payload = {
         "group_by": " \"Beds\"",
         "aggregate_column": " \"Taxes\"",
