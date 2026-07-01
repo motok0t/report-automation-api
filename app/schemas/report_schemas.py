@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 
 class AggregationType(str, Enum):
+    """Supported aggregation functions."""
     SUM = "sum"
     MEAN = "mean"
     COUNT = "count"
@@ -13,6 +14,7 @@ class AggregationType(str, Enum):
 
 
 class ReportRequest(BaseModel):
+    """Request model for report generation."""
     group_by: str
     aggregate_column: str
     aggregation: List[AggregationType] = [AggregationType.SUM]
@@ -22,6 +24,7 @@ class ReportRequest(BaseModel):
 
 
 class ReportResponse(BaseModel):
+    """Response model containing report data and summary."""
     status: str
     data: List[Dict[str, Any]]
     total_rows: int
@@ -29,6 +32,7 @@ class ReportResponse(BaseModel):
 
 
 class FileUploadResponse(BaseModel):
+    """Response model for file upload endpoint."""
     filename: str
     rows: int
     columns: int

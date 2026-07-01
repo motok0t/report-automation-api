@@ -5,7 +5,7 @@ import pandas as pd
 
 def validate_columns(df: pd.DataFrame, required_columns: List[str]) -> bool:
     """
-    Проверяет наличие обязательных колонок в DataFrame.
+    Check that all required columns exist in the DataFrame.
     """
     for col in required_columns:
         if col not in df.columns:
@@ -22,7 +22,7 @@ def validate_aggregation_params(
     aggregate_column: str
 ) -> bool:
     """
-    Проверяет, что колонки существуют и имеют подходящий тип для агрегации.
+    Check that columns exist and aggregate column is numeric.
     """
     if group_by not in df.columns:
         raise ValueError(f"Group by column '{group_by}' not found.")
@@ -41,7 +41,7 @@ def validate_aggregation_params(
 
 def get_column_info(df: pd.DataFrame) -> Dict[str, Any]:
     """
-    Возвращает информацию о колонках: тип, количество уникальных, пропуски.
+    Return column info: dtype, null count, unique count, sample values.
     """
     info = {}
     for col in df.columns:
