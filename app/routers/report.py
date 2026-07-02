@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse
 
 from app.schemas.report_schemas import ReportRequest, ReportResponse
 from app.services.data_processor import DataProcessor
-from app.utils.validators import validate_aggregation_params
+from app.services.validators import DataValidator
 
 
 logger = logging.getLogger(__name__)
@@ -26,7 +26,7 @@ async def generate_summary(request: ReportRequest):
         df = pd.read_csv("data/homes.csv")
         df = DataProcessor.clean_data(df)
 
-        validate_aggregation_params(
+        DataValidator.validate_aggregation_params(
             df,
             request.group_by,
             request.aggregate_column
@@ -88,7 +88,7 @@ async def download_csv(request: ReportRequest):
         df = pd.read_csv("data/homes.csv")
         df = DataProcessor.clean_data(df)
 
-        validate_aggregation_params(
+        DataValidator.validate_aggregation_params(
             df,
             request.group_by,
             request.aggregate_column
@@ -161,7 +161,7 @@ async def download_excel(request: ReportRequest):
         df = pd.read_csv("data/homes.csv")
         df = DataProcessor.clean_data(df)
 
-        validate_aggregation_params(
+        DataValidator.validate_aggregation_params(
             df,
             request.group_by,
             request.aggregate_column
