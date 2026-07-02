@@ -105,3 +105,25 @@ class DataProcessor:
             (df[aggregate_column] > upper_bound)
         )
         return df
+
+    @staticmethod
+    def highlight_outliers(df: pd.DataFrame, column: str) -> pd.DataFrame:
+        """
+        Apply conditional formatting to highlight outlier rows in a column.
+
+        Uses IQR method: values below Q1 - 1.5*IQR or above Q3 + 1.5*IQR
+        are considered outliers.
+        """
+        q1 = df[column].quantile(0.25)
+        q3 = df[column].quantile(0.75)
+        iqr = q3 - q1
+        lower_bound = q1 - 1.5 * iqr
+        upper_bound = q3 + 1.5 * iqr
+
+        styled_df = df.copy()
+        styled_df['_style'] = ''
+
+        outlier_mask = (df[column] < lower_bound) | (df[column] > upper_bound)
+        styled_df.loc[outlier_mask, '_style'] = 'background-color: #ffcccc; font-weight: bold;'
+
+        return styled_df

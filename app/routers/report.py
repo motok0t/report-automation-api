@@ -156,7 +156,7 @@ async def suggest_structure(request: ReportRequest):
 
 @router.post("/download/excel")
 async def download_excel(request: ReportRequest):
-    """Generate report and return as Excel file."""
+    """Generate report and return as Excel file with highlighted outliers."""
     try:
         df = pd.read_csv("data/homes.csv")
         df = DataProcessor.clean_data(df)
@@ -184,6 +184,10 @@ async def download_excel(request: ReportRequest):
             request.aggregate_column,
             agg_list
         )
+
+        if request.detect_outliers:
+            result = DataProcessor.highlight_outliers(result, 'sum')
+            result = result.drop(columns=['_style'], errors='ignore')
 
         os.makedirs("generated_reports", exist_ok=True)
         output_path = "generated_reports/report.xlsx"

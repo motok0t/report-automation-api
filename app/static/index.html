@@ -1,106 +1,43 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Report Automation API</title>
-    <style>
-        body { font-family: Arial, sans-serif; max-width: 800px; margin: 2rem auto; padding: 1rem; }
-        section { margin: 2rem 0; padding: 1.5rem; border: 1px solid #ddd; border-radius: 8px; }
-        button { padding: 0.5rem 1rem; margin: 0.5rem 0; cursor: pointer; }
-        pre { background: #f4f4f4; padding: 1rem; border-radius: 4px; overflow-x: auto; }
-        input, select { padding: 0.4rem; margin: 0.3rem 0; width: 100%; max-width: 300px; }
-        .btn-group { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-    </style>
+    <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-    <h1>📊 Report Automation API</h1>
-    <p>Upload a file and generate aggregated reports.</p>
 
-    <section id="upload-section">
-        <h2>1. Upload File</h2>
+<h1>📊 Report Automation API</h1>
+<p class="subtitle">Upload a file and generate aggregated reports.</p>
+
+<section id="upload-section">
+    <h2>1. Upload File</h2>
+    <div class="file-upload-wrapper">
+        <label for="fileInput" class="file-label">Choose File</label>
         <input type="file" id="fileInput">
-        <button id="uploadBtn">Upload</button>
-        <div id="uploadResult"></div>
-    </section>
+        <span id="fileChosen">No file chosen</span>
+        <button class="primary" id="uploadBtn">Upload</button>
+    </div>
+    <div id="uploadResult" class="result-box" style="display:none;"></div>
+</section>
 
-    <section id="report-section">
-        <h2>2. Generate Report</h2>
-        <label>Group by column: <input type="text" id="groupBy" value=' "Beds"'></label><br>
-        <label>Aggregate column: <input type="text" id="aggCol" value=' "Taxes"'></label><br>
-        <label>Aggregations (comma-separated):
-            <input type="text" id="aggList" value="sum,mean,count">
-        </label><br>
-        <label>
-            <input type="checkbox" id="detectOutliers"> Detect outliers
-        </label><br>
-        <div class="btn-group">
-            <button id="reportBtn">Generate Summary</button>
-            <button id="downloadCsvBtn">Download CSV</button>
-            <button id="downloadExcelBtn">Download Excel</button>
-        </div>
-        <div id="reportResult"></div>
-    </section>
+<section id="report-section">
+    <h2>2. Generate Report</h2>
+    <div class="flex-row">
+        <label>Group by: <input type="text" id="groupBy" value=' "Beds"'></label>
+        <label>Aggregate: <input type="text" id="aggCol" value=' "Taxes"'></label>
+        <label>Metrics: <input type="text" id="aggList" value="sum,mean,count"></label>
+        <label><input type="checkbox" id="detectOutliers"> Detect outliers</label>
+    </div>
+    <div class="btn-group">
+        <button class="primary" id="reportBtn">Generate Summary</button>
+        <button class="secondary" id="downloadCsvBtn">Download CSV</button>
+        <button class="secondary" id="downloadExcelBtn">Download Excel</button>
+    </div>
+    <div id="reportResult" class="result-box" style="display:none;"></div>
+</section>
 
-    <script>
-        const uploadBtn = document.getElementById('uploadBtn');
-        const reportBtn = document.getElementById('reportBtn');
-        const downloadCsvBtn = document.getElementById('downloadCsvBtn');
-        const downloadExcelBtn = document.getElementById('downloadExcelBtn');
-
-        const uploadResult = document.getElementById('uploadResult');
-        const reportResult = document.getElementById('reportResult');
-
-        const fileInput = document.getElementById('fileInput');
-
-        async function postJson(url, data) {
-            const res = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-            return res;
-        }
-
-        uploadBtn.onclick = async () => {
-            const file = fileInput.files[0];
-            if (!file) { uploadResult.textContent = 'Select a file first.'; return; }
-            const form = new FormData();
-            form.append('file', file);
-            const res = await fetch('/upload/', { method: 'POST', body: form });
-            const json = await res.json();
-            uploadResult.innerHTML = '<pre>' + JSON.stringify(json, null, 2) + '</pre>';
-        };
-
-        const getParams = () => ({
-            group_by: document.getElementById('groupBy').value,
-            aggregate_column: document.getElementById('aggCol').value,
-            aggregation: document.getElementById('aggList').value.split(',').map(s => s.trim()),
-            detect_outliers: document.getElementById('detectOutliers').checked
-        });
-
-        reportBtn.onclick = async () => {
-            const res = await postJson('/report/summary', getParams());
-            const json = await res.json();
-            reportResult.innerHTML = '<pre>' + JSON.stringify(json, null, 2) + '</pre>';
-        };
-
-        downloadCsvBtn.onclick = async () => {
-            const res = await postJson('/report/download/csv', getParams());
-            const blob = await res.blob();
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = 'report.csv';
-            link.click();
-        };
-
-        downloadExcelBtn.onclick = async () => {
-            const res = await postJson('/report/download/excel', getParams());
-            const blob = await res.blob();
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = 'report.xlsx';
-            link.click();
-        };
-    </script>
+<script src="/js/app.js"></script>
 </body>
 </html>
