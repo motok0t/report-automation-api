@@ -6,7 +6,9 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 
 from app.schemas.report_schemas import ReportRequest, ReportResponse
-from app.services.data_processor import DataProcessor
+from app.services.aggregator import DataAggregator
+from app.services.cleaner import DataCleaner
+from app.services.outlier import OutlierDetector
 from app.services.validators import DataValidator
 
 
@@ -24,7 +26,7 @@ async def generate_summary(request: ReportRequest):
             f"outliers={request.detect_outliers}"
         )
         df = pd.read_csv("data/homes.csv")
-        df = DataProcessor.clean_data(df)
+        df = DataCleaner.clean_data(df)
 
         DataValidator.validate_aggregation_params(
             df,
@@ -33,24 +35,24 @@ async def generate_summary(request: ReportRequest):
         )
 
         if request.filter_column and request.filter_value:
-            df = DataProcessor.filter_data(
+            df = DataAggregator.filter_data(
                 df,
                 request.filter_column,
                 request.filter_value
             )
 
         if request.detect_outliers:
-            df = DataProcessor.detect_outliers(df, request.aggregate_column)
+            df = OutlierDetector.detect_outliers(df, request.aggregate_column)
 
         agg_list = [a.value for a in request.aggregation]
-        result = DataProcessor.aggregate_data(
+        result = DataAggregator.aggregate_data(
             df,
             request.group_by,
             request.aggregate_column,
             agg_list
         )
 
-        stats = DataProcessor.get_summary_stats(
+        stats = DataAggregator.get_summary_stats(
             df,
             request.group_by,
             request.aggregate_column,
@@ -86,7 +88,7 @@ async def download_csv(request: ReportRequest):
     """Generate report and return as CSV file."""
     try:
         df = pd.read_csv("data/homes.csv")
-        df = DataProcessor.clean_data(df)
+        df = DataCleaner.clean_data(df)
 
         DataValidator.validate_aggregation_params(
             df,
@@ -95,17 +97,17 @@ async def download_csv(request: ReportRequest):
         )
 
         if request.filter_column and request.filter_value:
-            df = DataProcessor.filter_data(
+            df = DataAggregator.filter_data(
                 df,
                 request.filter_column,
                 request.filter_value
             )
 
         if request.detect_outliers:
-            df = DataProcessor.detect_outliers(df, request.aggregate_column)
+            df = OutlierDetector.detect_outliers(df, request.aggregate_column)
 
         agg_list = [a.value for a in request.aggregation]
-        result = DataProcessor.aggregate_data(
+        result = DataAggregator.aggregate_data(
             df,
             request.group_by,
             request.aggregate_column,
@@ -132,7 +134,7 @@ async def suggest_structure(request: ReportRequest):
     """
     try:
         df = pd.read_csv("data/homes.csv")
-        df = DataProcessor.clean_data(df)
+        df = DataCleaner.clean_data(df)
 
         numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
         categorical_cols = (
@@ -159,7 +161,7 @@ async def download_excel(request: ReportRequest):
     """Generate report and return as Excel file with highlighted outliers."""
     try:
         df = pd.read_csv("data/homes.csv")
-        df = DataProcessor.clean_data(df)
+        df = DataCleaner.clean_data(df)
 
         DataValidator.validate_aggregation_params(
             df,
@@ -168,17 +170,17 @@ async def download_excel(request: ReportRequest):
         )
 
         if request.filter_column and request.filter_value:
-            df = DataProcessor.filter_data(
+            df = DataAggregator.filter_data(
                 df,
                 request.filter_column,
                 request.filter_value
             )
 
         if request.detect_outliers:
-            df = DataProcessor.detect_outliers(df, request.aggregate_column)
+            df = OutlierDetector.detect_outliers(df, request.aggregate_column)
 
         agg_list = [a.value for a in request.aggregation]
-        result = DataProcessor.aggregate_data(
+        result = DataAggregator.aggregate_data(
             df,
             request.group_by,
             request.aggregate_column,
@@ -186,7 +188,7 @@ async def download_excel(request: ReportRequest):
         )
 
         if request.detect_outliers:
-            result = DataProcessor.highlight_outliers(result, 'sum')
+            result = OutlierDetector.highlight_outliers(result, 'sum')
             result = result.drop(columns=['_style'], errors='ignore')
 
         os.makedirs("generated_reports", exist_ok=True)
