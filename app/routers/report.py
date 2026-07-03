@@ -74,13 +74,25 @@ async def generate_summary(request: ReportRequest):
         )
     except ValueError as e:
         logger.error(f"Validation error: {str(e)}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid request: {str(e)}"
+        )
     except FileNotFoundError:
         logger.error("Data file not found")
-        raise HTTPException(status_code=404, detail="Data file not found")
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                "Data file not found. "
+                "Check that 'data/homes.csv' exists."
+            )
+        )
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(
+            status_code=500,
+            detail="Something went wrong. Please try again later."
+        )
 
 
 @router.post("/download/csv")
@@ -123,8 +135,27 @@ async def download_csv(request: ReportRequest):
             filename="report.csv",
             media_type="text/csv"
         )
+    except ValueError as e:
+        logger.error(f"Validation error: {str(e)}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid request: {str(e)}"
+        )
+    except FileNotFoundError:
+        logger.error("Data file not found")
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                "Data file not found. "
+                "Check that 'data/homes.csv' exists."
+            )
+        )
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(f"Unexpected error: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Something went wrong. Please try again later."
+        )
 
 
 @router.post("/suggest")
@@ -152,8 +183,21 @@ async def suggest_structure(request: ReportRequest):
                 numeric_cols[:3] if numeric_cols else []
             )
         }
+    except FileNotFoundError:
+        logger.error("Data file not found")
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                "Data file not found. "
+                "Check that 'data/homes.csv' exists."
+            )
+        )
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(f"Unexpected error: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Something went wrong. Please try again later."
+        )
 
 
 @router.post("/download/excel")
@@ -203,5 +247,24 @@ async def download_excel(request: ReportRequest):
                 "spreadsheetml.sheet"
             )
         )
+    except ValueError as e:
+        logger.error(f"Validation error: {str(e)}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid request: {str(e)}"
+        )
+    except FileNotFoundError:
+        logger.error("Data file not found")
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                "Data file not found. "
+                "Check that 'data/homes.csv' exists."
+            )
+        )
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(f"Unexpected error: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Something went wrong. Please try again later."
+        )

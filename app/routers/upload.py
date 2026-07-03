@@ -26,7 +26,13 @@ async def upload_file(file: UploadFile = File(...)):
         )
     except ValueError as e:
         logger.error(f"Validation error: {str(e)}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid file or data: {str(e)}"
+        )
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(
+            status_code=500,
+            detail="Something went wrong. Please try again later."
+        )
