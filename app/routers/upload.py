@@ -1,6 +1,8 @@
 import logging
+import os
 
-from fastapi import APIRouter, UploadFile, File, HTTPException
+import pandas as pd
+from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from app.schemas.report_schemas import FileUploadResponse
 from app.services.file_handler import FileHandler
@@ -9,20 +11,37 @@ from app.services.file_handler import FileHandler
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/upload", tags=["Upload"])
 
+UPLOAD_DIR = "uploaded_files"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
 
 @router.post("/", response_model=FileUploadResponse)
 async def upload_file(file: UploadFile = File(...)):
     try:
         logger.info(f"Uploading file: {file.filename}")
-        df = await FileHandler.read_file(file)
+        file_path = os.path.join(UPLOAD_DIR, file.filename)
+        contents = await file.read()
+        with open(file_path, "wb") as f:
+            f.write(contents)
+
+        df = FileHandler.read_file_from_path(file_path)
         info = FileHandler.get_file_info(df)
+
+        numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
+        categorical_cols = (
+            df.select_dtypes(include=['object', 'category'])
+            .columns.tolist()
+        )
+
         logger.info(f"File uploaded: {file.filename}, rows: {info['rows']}")
         return FileUploadResponse(
             filename=file.filename,
             rows=info["rows"],
             columns=info["columns"],
             column_names=info["column_names"],
-            preview=df.head(5).to_dict(orient="records")
+            preview=df.head(5).to_dict(orient="records"),
+            numeric_columns=numeric_cols,
+            categorical_columns=categorical_cols
         )
     except ValueError as e:
         logger.error(f"Validation error: {str(e)}")
@@ -35,4 +54,64 @@ async def upload_file(file: UploadFile = File(...)):
         raise HTTPException(
             status_code=500,
             detail="Something went wrong. Please try again later."
+        )
+
+
+@router.get("/sheets")
+async def get_sheets():
+    files = os.listdir(UPLOAD_DIR)
+    if not files:
+        raise HTTPException(status_code=404, detail="No file uploaded yet.")
+    latest_file = os.path.join(UPLOAD_DIR, files[-1])
+    try:
+        sheets = pd.read_excel(latest_file, sheet_name=None)
+        return {"sheets": list(sheets.keys())}
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Error reading sheets: {str(e)}"
+        )
+
+
+@router.get("/columns")
+async def get_columns(sheet: str):
+    files = os.listdir(UPLOAD_DIR)
+    if not files:
+        raise HTTPException(status_code=404, detail="No file uploaded yet.")
+    latest_file = os.path.join(UPLOAD_DIR, files[-1])
+    try:
+        df = pd.read_excel(latest_file, sheet_name=sheet, nrows=1)
+        df.columns = df.columns.str.strip('"').str.strip()
+        numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
+        categorical_cols = (
+            df.select_dtypes(include=['object', 'category'])
+            .columns.tolist()
+        )
+        return {
+            "columns": list(df.columns),
+            "numeric_columns": numeric_cols,
+            "categorical_columns": categorical_cols
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Error reading columns: {str(e)}"
+        )
+
+
+@router.get("/preview")
+async def get_preview(sheet: str):
+    files = os.listdir(UPLOAD_DIR)
+    if not files:
+        raise HTTPException(status_code=404, detail="No file uploaded yet.")
+    latest_file = os.path.join(UPLOAD_DIR, files[-1])
+    try:
+        df = pd.read_excel(latest_file, sheet_name=sheet)
+        df.columns = df.columns.str.strip('"').str.strip()
+        preview = df.head(5).to_dict(orient="records")
+        return {"preview": preview}
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Error reading preview: {str(e)}"
         )

@@ -9,11 +9,38 @@ const reportResult = document.getElementById('reportResult');
 const fileInput = document.getElementById('fileInput');
 const fileChosen = document.getElementById('fileChosen');
 
+const sheetSelect = document.getElementById('sheetSelect');
+
 fileInput.addEventListener('change', () => {
     if (fileInput.files.length > 0) {
         fileChosen.textContent = fileInput.files[0].name;
     } else {
         fileChosen.textContent = 'No file chosen';
+    }
+});
+
+sheetSelect.addEventListener('change', async function() {
+    const sheetName = this.value;
+    const previewContainer = document.getElementById('uploadResult');
+    if (!sheetName) {
+        previewContainer.style.display = 'none';
+        return;
+    }
+    try {
+        const res = await fetch(`/upload/preview?sheet=${sheetName}`);
+        if (res.ok) {
+            const data = await res.json();
+            previewContainer.style.display = 'block';
+            previewContainer.innerHTML = `
+                <p><strong>Preview for sheet: ${sheetName}</strong></p>
+                ${renderTable(data.preview)}
+            `;
+        } else {
+            previewContainer.innerHTML = '<p>Error loading preview</p>';
+        }
+    } catch (e) {
+        console.error('Failed to load preview:', e);
+        previewContainer.innerHTML = '<p>Error loading preview</p>';
     }
 });
 
@@ -35,7 +62,22 @@ function renderTable(data) {
     html += '</tr></thead><tbody>';
     data.forEach(row => {
         html += '<tr>';
-        keys.forEach(k => html += `<td>${row[k] ?? ''}</td>`);
+        keys.forEach(k => {
+            let value = row[k] ?? '';
+            if (k === 'has_outliers' && value === true) {
+                value = '⚠️';
+            } else if (k === 'has_outliers' && value === false) {
+                value = '✅';
+            }
+            if (typeof value === 'number') {
+                if (!isFinite(value)) {
+                    value = 'N/A';
+                } else {
+                    value = value.toFixed(2);
+                }
+            }
+            html += `<td>${value}</td>`;
+        });
         html += '</tr>';
     });
     html += '</tbody></table>';
@@ -72,17 +114,65 @@ uploadBtn.onclick = async () => {
             <p><strong>Preview:</strong></p>
             ${renderTable(json.preview)}
         `;
+
+        const groupBySelect = document.getElementById('groupBy');
+        const aggColSelect = document.getElementById('aggCol');
+        groupBySelect.innerHTML = '';
+        aggColSelect.innerHTML = '';
+        json.column_names.forEach(col => {
+            const opt1 = document.createElement('option');
+            opt1.value = col;
+            opt1.textContent = col;
+            groupBySelect.appendChild(opt1);
+
+            const opt2 = document.createElement('option');
+            opt2.value = col;
+            opt2.textContent = col;
+            aggColSelect.appendChild(opt2);
+        });
+
+        if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+            const sheetSelect = document.getElementById('sheetSelect');
+            sheetSelect.innerHTML = '<option value="">Loading sheets...</option>';
+            try {
+                const sheetRes = await fetch('/upload/sheets');
+                if (sheetRes.ok) {
+                    const sheetData = await sheetRes.json();
+                    sheetSelect.innerHTML = '<option value="">Select sheet...</option>';
+                    sheetData.sheets.forEach(name => {
+                        const opt = document.createElement('option');
+                        opt.value = name;
+                        opt.textContent = name;
+                        sheetSelect.appendChild(opt);
+                    });
+                } else {
+                    sheetSelect.innerHTML = '<option value="">No sheets found</option>';
+                }
+            } catch (e) {
+                sheetSelect.innerHTML = '<option value="">Error loading sheets</option>';
+            }
+        } else {
+            const sheetSelect = document.getElementById('sheetSelect');
+            sheetSelect.innerHTML = '<option value="">No sheets available</option>';
+        }
     } catch (e) {
         showError(uploadResult, e.message);
     }
 };
 
-const getParams = () => ({
-    group_by: document.getElementById('groupBy').value,
-    aggregate_column: document.getElementById('aggCol').value,
-    aggregation: document.getElementById('aggList').value.split(',').map(s => s.trim()).filter(Boolean),
-    detect_outliers: document.getElementById('detectOutliers').checked
-});
+const getParams = () => {
+    const selected = [];
+    document.querySelectorAll('.metric-check:checked').forEach(el => {
+        selected.push(el.value);
+    });
+    return {
+        group_by: document.getElementById('groupBy').value,
+        aggregate_column: document.getElementById('aggCol').value,
+        aggregation: selected.length ? selected : ['sum', 'mean', 'count'],
+        detect_outliers: document.getElementById('detectOutliers').checked,
+        sheet_name: document.getElementById('sheetSelect').value || null
+    };
+};
 
 reportBtn.onclick = async () => {
     showLoading(reportResult);

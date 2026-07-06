@@ -7,7 +7,7 @@ class ExcelHandler(BaseFileHandler):
     """Handler for Excel files."""
 
     def read(self, file_path: str) -> pd.DataFrame:
-        return pd.read_excel(file_path)
+        return pd.read_excel(file_path, engine='openpyxl')
 
     def save(self, df: pd.DataFrame, file_path: str) -> None:
         df.to_excel(file_path, index=False)

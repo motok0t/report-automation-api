@@ -1,6 +1,6 @@
 import os
 import tempfile
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import pandas as pd
 from fastapi import UploadFile
@@ -24,6 +24,12 @@ class FileHandler:
     }
 
     @staticmethod
+    def _clean_columns(df: pd.DataFrame) -> pd.DataFrame:
+        """Remove quotes and strip whitespace from column names."""
+        df.columns = df.columns.str.strip('"').str.strip()
+        return df
+
+    @staticmethod
     async def read_file(file: UploadFile) -> pd.DataFrame:
         """Read CSV, Excel, JSON or Parquet file into DataFrame."""
         contents = await file.read()
@@ -43,7 +49,19 @@ class FileHandler:
 
         df = handler.read(temp_file.name)
         os.unlink(temp_file.name)
-        return df
+        return FileHandler._clean_columns(df)
+
+    @staticmethod
+    def read_file_from_path(file_path: str) -> pd.DataFrame:
+        """Read CSV, Excel, JSON or Parquet file from path into DataFrame."""
+        suffix = os.path.splitext(file_path)[1]
+        handler = FileHandler._handlers.get(suffix)
+        if handler is None:
+            raise ValueError(
+                "Unsupported format. Use CSV, Excel, JSON or Parquet."
+            )
+        df = handler.read(file_path)
+        return FileHandler._clean_columns(df)
 
     @staticmethod
     def save_report(df: pd.DataFrame, filename: str = "report.xlsx") -> str:
@@ -61,3 +79,16 @@ class FileHandler:
     def get_file_info(df: pd.DataFrame) -> Dict[str, Any]:
         """Return rows, columns, dtypes and memory usage of DataFrame."""
         return BaseFileHandler.get_file_info(df)
+
+    @staticmethod
+    def get_sheet_names(file: UploadFile) -> List[str]:
+        """Return list of sheet names from Excel file."""
+        contents = file.file.read()
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx')
+        temp_file.write(contents)
+        temp_file.close()
+        try:
+            sheets = pd.read_excel(temp_file.name, sheet_name=None)
+            return list(sheets.keys())
+        finally:
+            os.unlink(temp_file.name)

@@ -23,9 +23,19 @@ async def generate_summary(request: ReportRequest):
         logger.info(
             f"Generating report: group_by={request.group_by}, "
             f"agg={[a.value for a in request.aggregation]}, "
-            f"outliers={request.detect_outliers}"
+            f"outliers={request.detect_outliers}, "
+            f"sheet={request.sheet_name}"
         )
-        df = pd.read_csv("data/homes.csv")
+
+        if request.sheet_name:
+            df = pd.read_excel(
+                "uploaded_files/sampledatafoodsales.xlsx",
+                sheet_name=request.sheet_name
+            )
+        else:
+            df = pd.read_csv("data/homes.csv")
+
+        df.columns = df.columns.str.strip('"').str.strip()
         df = DataCleaner.clean_data(df)
 
         DataValidator.validate_aggregation_params(
@@ -51,6 +61,14 @@ async def generate_summary(request: ReportRequest):
             request.aggregate_column,
             agg_list
         )
+
+        if request.detect_outliers:
+            outliers_by_group = (
+                df.groupby(request.group_by)['is_outlier'].any()
+            )
+            result['has_outliers'] = (
+                result[request.group_by].map(outliers_by_group)
+            )
 
         stats = DataAggregator.get_summary_stats(
             df,
@@ -99,7 +117,15 @@ async def generate_summary(request: ReportRequest):
 async def download_csv(request: ReportRequest):
     """Generate report and return as CSV file."""
     try:
-        df = pd.read_csv("data/homes.csv")
+        if request.sheet_name:
+            df = pd.read_excel(
+                "uploaded_files/sampledatafoodsales.xlsx",
+                sheet_name=request.sheet_name
+            )
+        else:
+            df = pd.read_csv("data/homes.csv")
+
+        df.columns = df.columns.str.strip('"').str.strip()
         df = DataCleaner.clean_data(df)
 
         DataValidator.validate_aggregation_params(
@@ -164,7 +190,15 @@ async def suggest_structure(request: ReportRequest):
     Analyze data and suggest columns for grouping and aggregation.
     """
     try:
-        df = pd.read_csv("data/homes.csv")
+        if request.sheet_name:
+            df = pd.read_excel(
+                "uploaded_files/sampledatafoodsales.xlsx",
+                sheet_name=request.sheet_name
+            )
+        else:
+            df = pd.read_csv("data/homes.csv")
+
+        df.columns = df.columns.str.strip('"').str.strip()
         df = DataCleaner.clean_data(df)
 
         numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
@@ -204,7 +238,15 @@ async def suggest_structure(request: ReportRequest):
 async def download_excel(request: ReportRequest):
     """Generate report and return as Excel file with highlighted outliers."""
     try:
-        df = pd.read_csv("data/homes.csv")
+        if request.sheet_name:
+            df = pd.read_excel(
+                "uploaded_files/sampledatafoodsales.xlsx",
+                sheet_name=request.sheet_name
+            )
+        else:
+            df = pd.read_csv("data/homes.csv")
+
+        df.columns = df.columns.str.strip('"').str.strip()
         df = DataCleaner.clean_data(df)
 
         DataValidator.validate_aggregation_params(

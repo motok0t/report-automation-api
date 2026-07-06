@@ -8,7 +8,7 @@
 </head>
 <body>
 
-<h1>📊 Report Automation API</h1>
+<h1>Report Automation API</h1>
 <p class="subtitle">Upload a file and generate aggregated reports.</p>
 
 <section id="upload-section">
@@ -19,15 +19,32 @@
         <span id="fileChosen">No file chosen</span>
         <button class="primary" id="uploadBtn">Upload</button>
     </div>
+    <div class="flex-row" style="margin-top: 0.8rem;">
+        <label>Sheet:
+            <select id="sheetSelect">
+                <option value="">Upload Excel to see sheets</option>
+            </select>
+        </label>
+    </div>
     <div id="uploadResult" class="result-box" style="display:none;"></div>
 </section>
 
 <section id="report-section">
     <h2>2. Generate Report</h2>
     <div class="flex-row">
-        <label>Group by: <input type="text" id="groupBy" value=' "Beds"'></label>
-        <label>Aggregate: <input type="text" id="aggCol" value=' "Taxes"'></label>
-        <label>Metrics: <input type="text" id="aggList" value="sum,mean,count"></label>
+        <label>Group by:
+            <select id="groupBy"></select>
+        </label>
+        <label>Aggregate:
+            <select id="aggCol"></select>
+        </label>
+        <label>Metrics:
+            <label><input type="checkbox" class="metric-check" value="sum"> Sum</label>
+            <label><input type="checkbox" class="metric-check" value="mean"> Mean</label>
+            <label><input type="checkbox" class="metric-check" value="count"> Count</label>
+            <label><input type="checkbox" class="metric-check" value="min"> Min</label>
+            <label><input type="checkbox" class="metric-check" value="max"> Max</label>
+        </label>
         <label><input type="checkbox" id="detectOutliers"> Detect outliers</label>
     </div>
     <div class="btn-group">
