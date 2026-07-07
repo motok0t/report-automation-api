@@ -11,6 +11,63 @@ const fileChosen = document.getElementById('fileChosen');
 
 const sheetSelect = document.getElementById('sheetSelect');
 
+let currentColumns = [];
+
+function populateSelects(columns) {
+    const groupBySelect = document.getElementById('groupBy');
+    const aggColSelect = document.getElementById('aggCol');
+    const currentGroupBy = groupBySelect.value;
+    const currentAggCol = aggColSelect.value;
+
+    groupBySelect.innerHTML = '';
+    aggColSelect.innerHTML = '';
+
+    columns.forEach(col => {
+        const opt1 = document.createElement('option');
+        opt1.value = col;
+        opt1.textContent = col;
+        groupBySelect.appendChild(opt1);
+
+        const opt2 = document.createElement('option');
+        opt2.value = col;
+        opt2.textContent = col;
+        aggColSelect.appendChild(opt2);
+    });
+
+    if (currentGroupBy && columns.includes(currentGroupBy)) {
+        groupBySelect.value = currentGroupBy;
+    }
+    if (currentAggCol && columns.includes(currentAggCol)) {
+        aggColSelect.value = currentAggCol;
+    }
+
+    updateSelects();
+}
+
+function updateSelects() {
+    const groupBySelect = document.getElementById('groupBy');
+    const aggColSelect = document.getElementById('aggCol');
+    const groupByVal = groupBySelect.value;
+    const aggColVal = aggColSelect.value;
+
+    Array.from(aggColSelect.options).forEach(opt => {
+        opt.disabled = (opt.value === groupByVal);
+    });
+
+    Array.from(groupBySelect.options).forEach(opt => {
+        opt.disabled = (opt.value === aggColVal);
+    });
+
+    if (aggColSelect.value === groupByVal) {
+        const firstEnabled = Array.from(aggColSelect.options).find(opt => !opt.disabled);
+        if (firstEnabled) aggColSelect.value = firstEnabled.value;
+    }
+    if (groupBySelect.value === aggColVal) {
+        const firstEnabled = Array.from(groupBySelect.options).find(opt => !opt.disabled);
+        if (firstEnabled) groupBySelect.value = firstEnabled.value;
+    }
+}
+
 fileInput.addEventListener('change', () => {
     if (fileInput.files.length > 0) {
         fileChosen.textContent = fileInput.files[0].name;
@@ -30,21 +87,8 @@ sheetSelect.addEventListener('change', async function() {
         const res = await fetch(`/upload/columns?sheet=${sheetName}`);
         if (res.ok) {
             const data = await res.json();
-            const groupBySelect = document.getElementById('groupBy');
-            const aggColSelect = document.getElementById('aggCol');
-            groupBySelect.innerHTML = '';
-            aggColSelect.innerHTML = '';
-            data.columns.forEach(col => {
-                const opt1 = document.createElement('option');
-                opt1.value = col;
-                opt1.textContent = col;
-                groupBySelect.appendChild(opt1);
-
-                const opt2 = document.createElement('option');
-                opt2.value = col;
-                opt2.textContent = col;
-                aggColSelect.appendChild(opt2);
-            });
+            currentColumns = data.columns;
+            populateSelects(currentColumns);
         }
         const previewRes = await fetch(`/upload/preview?sheet=${sheetName}`);
         if (previewRes.ok) {
@@ -60,6 +104,9 @@ sheetSelect.addEventListener('change', async function() {
         previewContainer.innerHTML = '<p>Error loading preview</p>';
     }
 });
+
+document.getElementById('groupBy').addEventListener('change', updateSelects);
+document.getElementById('aggCol').addEventListener('change', updateSelects);
 
 function showLoading(container) {
     container.style.display = 'block';
@@ -93,6 +140,8 @@ function renderTable(data) {
             if (typeof value === 'number') {
                 if (!isFinite(value)) {
                     value = 'N/A';
+                } else if (Number.isInteger(value)) {
+                    value = value.toString();
                 } else {
                     value = value.toFixed(2);
                 }
@@ -117,13 +166,13 @@ async function postJson(url, data) {
 uploadBtn.onclick = async () => {
     const file = fileInput.files[0];
     if (!file) { showError(uploadResult, 'Select a file first.'); return; }
-    
+
     document.getElementById('reportResult').style.display = 'none';
     document.getElementById('reportResult').innerHTML = '';
     document.getElementById('reportHint').style.display = 'none';
     document.querySelectorAll('.metric-check').forEach(el => el.checked = false);
     document.getElementById('detectOutliers').checked = false;
-    
+
     showLoading(uploadResult);
     const form = new FormData();
     form.append('file', file);
@@ -143,24 +192,12 @@ uploadBtn.onclick = async () => {
             ${renderTable(json.preview)}
         `;
 
-        const groupBySelect = document.getElementById('groupBy');
-        const aggColSelect = document.getElementById('aggCol');
-        groupBySelect.innerHTML = '';
-        aggColSelect.innerHTML = '';
-        json.column_names.forEach(col => {
-            const opt1 = document.createElement('option');
-            opt1.value = col;
-            opt1.textContent = col;
-            groupBySelect.appendChild(opt1);
+        currentColumns = json.column_names;
+        populateSelects(currentColumns);
 
-            const opt2 = document.createElement('option');
-            opt2.value = col;
-            opt2.textContent = col;
-            aggColSelect.appendChild(opt2);
-        });
-
-        if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
-            const sheetSelect = document.getElementById('sheetSelect');
+        const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
+        const sheetSelect = document.getElementById('sheetSelect');
+        if (isExcel) {
             sheetSelect.innerHTML = '<option value="">Loading sheets...</option>';
             try {
                 const sheetRes = await fetch('/upload/sheets');
@@ -180,7 +217,6 @@ uploadBtn.onclick = async () => {
                 sheetSelect.innerHTML = '<option value="">Error loading sheets</option>';
             }
         } else {
-            const sheetSelect = document.getElementById('sheetSelect');
             sheetSelect.innerHTML = '<option value="">No sheets available</option>';
         }
     } catch (e) {
@@ -196,7 +232,7 @@ const getParams = () => {
     return {
         group_by: document.getElementById('groupBy').value,
         aggregate_column: document.getElementById('aggCol').value,
-        aggregation: selected.length ? selected : ['sum', 'mean', 'count'],
+        aggregation: selected.length ? selected : [],
         detect_outliers: document.getElementById('detectOutliers').checked,
         sheet_name: document.getElementById('sheetSelect').value || null,
         sort_by: document.getElementById('sortBy').value
@@ -205,8 +241,17 @@ const getParams = () => {
 
 reportBtn.onclick = async () => {
     showLoading(reportResult);
+    const params = getParams();
+    if (params.aggregation.length === 0) {
+        showError(reportResult, 'Please select at least one metric.');
+        return;
+    }
+    if (params.group_by === params.aggregate_column) {
+        showError(reportResult, 'Group by and Aggregate cannot be the same column.');
+        return;
+    }
     try {
-        const res = await postJson('/report/summary', getParams());
+        const res = await postJson('/report/summary', params);
         if (!res.ok) {
             const err = await res.json();
             throw new Error(err.detail || 'Report generation failed');
@@ -224,9 +269,13 @@ reportBtn.onclick = async () => {
         reportResult.innerHTML = html;
 
         document.getElementById('reportHint').style.display = 'block';
-        document.getElementById('hintGroupBy').textContent = getParams().group_by;
-        document.getElementById('hintAggregate').textContent = getParams().aggregate_column;
-        document.getElementById('hintMetrics').textContent = getParams().aggregation.join(', ');
+        document.getElementById('hintGroupBy').textContent = params.group_by;
+        document.getElementById('hintAggregate').textContent = params.aggregate_column;
+        document.getElementById('hintMetrics').textContent = params.aggregation.join(', ');
+        const sortLabel = params.sort_by === 'asc' ? 'Ascending' :
+                          params.sort_by === 'desc' ? 'Descending' : 'None';
+        document.getElementById('hintSortBy').textContent =
+            `${sortLabel} (by ${params.group_by})`;
     } catch (e) {
         showError(reportResult, e.message);
     }

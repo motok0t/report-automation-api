@@ -44,14 +44,20 @@
                 <option value="asc">Ascending</option>
                 <option value="desc">Descending</option>
             </select>
+            <span style="font-size: 0.8rem; color: #555; margin-left: 6px;">
+                (by Group by field)
+            </span>
         </label>
-        <label>Metrics:
-            <label><input type="checkbox" class="metric-check" value="sum"> Sum</label>
-            <label><input type="checkbox" class="metric-check" value="mean"> Mean</label>
-            <label><input type="checkbox" class="metric-check" value="count"> Count</label>
-            <label><input type="checkbox" class="metric-check" value="min"> Min</label>
-            <label><input type="checkbox" class="metric-check" value="max"> Max</label>
-        </label>
+    </div>
+    <div class="flex-row">
+        <label>Metrics:</label>
+        <label><input type="checkbox" class="metric-check" value="sum"> Sum</label>
+        <label><input type="checkbox" class="metric-check" value="mean"> Mean</label>
+        <label><input type="checkbox" class="metric-check" value="count"> Count</label>
+        <label><input type="checkbox" class="metric-check" value="min"> Min</label>
+        <label><input type="checkbox" class="metric-check" value="max"> Max</label>
+    </div>
+    <div class="flex-row">
         <label><input type="checkbox" id="detectOutliers"> Detect outliers</label>
     </div>
     <div class="btn-group">
@@ -60,10 +66,15 @@
         <button class="secondary" id="downloadExcelBtn">Download Excel</button>
     </div>
     <div id="reportHint" class="result-box" style="display:none; background: #e8f4fd; border: 1px solid #b8d4e8;">
-        <p><strong>📊 How to read this report:</strong></p>
+        <p><strong>How to read this report:</strong></p>
         <p id="reportExplanation">Data is grouped by the selected column. For each group, the chosen metrics (sum, mean, count, min, max) are calculated for the aggregation column. This helps to compare groups and spot patterns or outliers.</p>
         <p><strong>Your selection:</strong></p>
-        <p id="reportHintText">Group by: <span id="hintGroupBy">-</span> | Aggregate: <span id="hintAggregate">-</span> | Metrics: <span id="hintMetrics">-</span></p>
+        <p id="reportHintText">
+            Group by: <span id="hintGroupBy">-</span> |
+            Aggregate: <span id="hintAggregate">-</span> |
+            Metrics: <span id="hintMetrics">-</span> |
+            Sort by: <span id="hintSortBy">-</span>
+        </p>
     </div>
     <div id="reportResult" class="result-box" style="display:none;"></div>
 </section>

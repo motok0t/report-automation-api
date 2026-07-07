@@ -146,3 +146,6 @@ tr:nth-child(even) { background: #f8f9fa; }
     color: #555;
     font-size: 0.9rem;
 }
+.metric-check {
+    margin-right: 20px;
+}

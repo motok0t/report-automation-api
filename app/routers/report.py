@@ -2,9 +2,9 @@ import logging
 import os
 from math import isfinite
 
-import pandas as pd
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
+import pandas as pd
 
 from app.schemas.report_schemas import ReportRequest, ReportResponse
 from app.services.aggregator import DataAggregator
@@ -18,7 +18,6 @@ router = APIRouter(prefix="/report", tags=["Report"])
 
 
 def clean_inf_from_dict(data):
-    """Recursively replace inf, -inf with None in dict/list."""
     if isinstance(data, dict):
         return {k: clean_inf_from_dict(v) for k, v in data.items()}
     if isinstance(data, list):
@@ -28,9 +27,33 @@ def clean_inf_from_dict(data):
     return data
 
 
+def get_uploaded_file_path():
+    upload_dir = "uploaded_files"
+    files = os.listdir(upload_dir)
+    if not files:
+        return None
+    return os.path.join(upload_dir, files[-1])
+
+
+def read_uploaded_file(file_path: str, sheet_name: str = "") -> pd.DataFrame:
+    if file_path.endswith('.csv'):
+        return pd.read_csv(file_path)
+    elif file_path.endswith(('.xlsx', '.xls')):
+        return pd.read_excel(
+            file_path,
+            sheet_name=sheet_name,
+            engine='openpyxl'
+        )
+    elif file_path.endswith('.parquet'):
+        return pd.read_parquet(file_path)
+    elif file_path.endswith('.json'):
+        return pd.read_json(file_path)
+    else:
+        raise ValueError(f"Unsupported file format: {file_path}")
+
+
 @router.post("/summary", response_model=ReportResponse)
 async def generate_summary(request: ReportRequest):
-    """Generate aggregated report with summary statistics."""
     try:
         logger.info(
             f"Generating report: group_by={request.group_by}, "
@@ -40,14 +63,17 @@ async def generate_summary(request: ReportRequest):
             f"sort={request.sort_by}"
         )
 
-        if request.sheet_name:
-            df = pd.read_excel(
-                "uploaded_files/sampledatafoodsales.xlsx",
-                sheet_name=request.sheet_name,
-                engine='openpyxl'
+        file_path = get_uploaded_file_path()
+        if not file_path:
+            raise HTTPException(
+                status_code=404,
+                detail="No file uploaded yet."
             )
+
+        if request.sheet_name and file_path.endswith(('.xlsx', '.xls')):
+            df = read_uploaded_file(file_path, sheet_name=request.sheet_name)
         else:
-            df = pd.read_csv("data/homes.csv")
+            df = read_uploaded_file(file_path)
 
         df.columns = df.columns.str.replace('"', '').str.strip()
         df = DataCleaner.clean_data(df)
@@ -122,10 +148,7 @@ async def generate_summary(request: ReportRequest):
         logger.error("Data file not found")
         raise HTTPException(
             status_code=404,
-            detail=(
-                "Data file not found. "
-                "Check that 'data/homes.csv' exists."
-            )
+            detail="Data file not found. Please upload a file first."
         )
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}")
@@ -137,16 +160,18 @@ async def generate_summary(request: ReportRequest):
 
 @router.post("/download/csv")
 async def download_csv(request: ReportRequest):
-    """Generate report and return as CSV file."""
     try:
-        if request.sheet_name:
-            df = pd.read_excel(
-                "uploaded_files/sampledatafoodsales.xlsx",
-                sheet_name=request.sheet_name,
-                engine='openpyxl'
+        file_path = get_uploaded_file_path()
+        if not file_path:
+            raise HTTPException(
+                status_code=404,
+                detail="No file uploaded yet."
             )
+
+        if request.sheet_name and file_path.endswith(('.xlsx', '.xls')):
+            df = read_uploaded_file(file_path, sheet_name=request.sheet_name)
         else:
-            df = pd.read_csv("data/homes.csv")
+            df = read_uploaded_file(file_path)
 
         df.columns = df.columns.str.replace('"', '').str.strip()
         df = DataCleaner.clean_data(df)
@@ -199,10 +224,7 @@ async def download_csv(request: ReportRequest):
         logger.error("Data file not found")
         raise HTTPException(
             status_code=404,
-            detail=(
-                "Data file not found. "
-                "Check that 'data/homes.csv' exists."
-            )
+            detail="Data file not found. Please upload a file first."
         )
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}")
@@ -214,18 +236,18 @@ async def download_csv(request: ReportRequest):
 
 @router.post("/suggest")
 async def suggest_structure(request: ReportRequest):
-    """
-    Analyze data and suggest columns for grouping and aggregation.
-    """
     try:
-        if request.sheet_name:
-            df = pd.read_excel(
-                "uploaded_files/sampledatafoodsales.xlsx",
-                sheet_name=request.sheet_name,
-                engine='openpyxl'
+        file_path = get_uploaded_file_path()
+        if not file_path:
+            raise HTTPException(
+                status_code=404,
+                detail="No file uploaded yet."
             )
+
+        if request.sheet_name and file_path.endswith(('.xlsx', '.xls')):
+            df = read_uploaded_file(file_path, sheet_name=request.sheet_name)
         else:
-            df = pd.read_csv("data/homes.csv")
+            df = read_uploaded_file(file_path)
 
         df.columns = df.columns.str.replace('"', '').str.strip()
         df = DataCleaner.clean_data(df)
@@ -250,10 +272,7 @@ async def suggest_structure(request: ReportRequest):
         logger.error("Data file not found")
         raise HTTPException(
             status_code=404,
-            detail=(
-                "Data file not found. "
-                "Check that 'data/homes.csv' exists."
-            )
+            detail="Data file not found. Please upload a file first."
         )
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}")
@@ -265,16 +284,18 @@ async def suggest_structure(request: ReportRequest):
 
 @router.post("/download/excel")
 async def download_excel(request: ReportRequest):
-    """Generate report and return as Excel file with highlighted outliers."""
     try:
-        if request.sheet_name:
-            df = pd.read_excel(
-                "uploaded_files/sampledatafoodsales.xlsx",
-                sheet_name=request.sheet_name,
-                engine='openpyxl'
+        file_path = get_uploaded_file_path()
+        if not file_path:
+            raise HTTPException(
+                status_code=404,
+                detail="No file uploaded yet."
             )
+
+        if request.sheet_name and file_path.endswith(('.xlsx', '.xls')):
+            df = read_uploaded_file(file_path, sheet_name=request.sheet_name)
         else:
-            df = pd.read_csv("data/homes.csv")
+            df = read_uploaded_file(file_path)
 
         df.columns = df.columns.str.replace('"', '').str.strip()
         df = DataCleaner.clean_data(df)
@@ -334,10 +355,7 @@ async def download_excel(request: ReportRequest):
         logger.error("Data file not found")
         raise HTTPException(
             status_code=404,
-            detail=(
-                "Data file not found. "
-                "Check that 'data/homes.csv' exists."
-            )
+            detail="Data file not found. Please upload a file first."
         )
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}")
