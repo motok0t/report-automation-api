@@ -27,19 +27,36 @@ sheetSelect.addEventListener('change', async function() {
         return;
     }
     try {
-        const res = await fetch(`/upload/preview?sheet=${sheetName}`);
+        const res = await fetch(`/upload/columns?sheet=${sheetName}`);
         if (res.ok) {
             const data = await res.json();
+            const groupBySelect = document.getElementById('groupBy');
+            const aggColSelect = document.getElementById('aggCol');
+            groupBySelect.innerHTML = '';
+            aggColSelect.innerHTML = '';
+            data.columns.forEach(col => {
+                const opt1 = document.createElement('option');
+                opt1.value = col;
+                opt1.textContent = col;
+                groupBySelect.appendChild(opt1);
+
+                const opt2 = document.createElement('option');
+                opt2.value = col;
+                opt2.textContent = col;
+                aggColSelect.appendChild(opt2);
+            });
+        }
+        const previewRes = await fetch(`/upload/preview?sheet=${sheetName}`);
+        if (previewRes.ok) {
+            const previewData = await previewRes.json();
             previewContainer.style.display = 'block';
             previewContainer.innerHTML = `
                 <p><strong>Preview for sheet: ${sheetName}</strong></p>
-                ${renderTable(data.preview)}
+                ${renderTable(previewData.preview)}
             `;
-        } else {
-            previewContainer.innerHTML = '<p>Error loading preview</p>';
         }
     } catch (e) {
-        console.error('Failed to load preview:', e);
+        console.error('Failed to load data:', e);
         previewContainer.innerHTML = '<p>Error loading preview</p>';
     }
 });
@@ -57,12 +74,16 @@ function showError(container, message) {
 function renderTable(data) {
     if (!data || data.length === 0) return '<p>No data to display.</p>';
     const keys = Object.keys(data[0]);
+    const columnNames = keys.map(k => {
+        if (k === 'has_outliers') return 'Anomalies';
+        return k;
+    });
     let html = '<table><thead><tr>';
-    keys.forEach(k => html += `<th>${k}</th>`);
+    columnNames.forEach(k => html += `<th>${k}</th>`);
     html += '</tr></thead><tbody>';
     data.forEach(row => {
         html += '<tr>';
-        keys.forEach(k => {
+        keys.forEach((k, index) => {
             let value = row[k] ?? '';
             if (k === 'has_outliers' && value === true) {
                 value = '⚠️';
@@ -96,6 +117,13 @@ async function postJson(url, data) {
 uploadBtn.onclick = async () => {
     const file = fileInput.files[0];
     if (!file) { showError(uploadResult, 'Select a file first.'); return; }
+    
+    document.getElementById('reportResult').style.display = 'none';
+    document.getElementById('reportResult').innerHTML = '';
+    document.getElementById('reportHint').style.display = 'none';
+    document.querySelectorAll('.metric-check').forEach(el => el.checked = false);
+    document.getElementById('detectOutliers').checked = false;
+    
     showLoading(uploadResult);
     const form = new FormData();
     form.append('file', file);
@@ -170,7 +198,8 @@ const getParams = () => {
         aggregate_column: document.getElementById('aggCol').value,
         aggregation: selected.length ? selected : ['sum', 'mean', 'count'],
         detect_outliers: document.getElementById('detectOutliers').checked,
-        sheet_name: document.getElementById('sheetSelect').value || null
+        sheet_name: document.getElementById('sheetSelect').value || null,
+        sort_by: document.getElementById('sortBy').value
     };
 };
 
@@ -193,6 +222,11 @@ reportBtn.onclick = async () => {
         }
         html += renderTable(json.data);
         reportResult.innerHTML = html;
+
+        document.getElementById('reportHint').style.display = 'block';
+        document.getElementById('hintGroupBy').textContent = getParams().group_by;
+        document.getElementById('hintAggregate').textContent = getParams().aggregate_column;
+        document.getElementById('hintMetrics').textContent = getParams().aggregation.join(', ');
     } catch (e) {
         showError(reportResult, e.message);
     }

@@ -1,5 +1,6 @@
 import logging
 import os
+from math import isfinite
 
 import pandas as pd
 from fastapi import APIRouter, HTTPException
@@ -16,6 +17,17 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/report", tags=["Report"])
 
 
+def clean_inf_from_dict(data):
+    """Recursively replace inf, -inf with None in dict/list."""
+    if isinstance(data, dict):
+        return {k: clean_inf_from_dict(v) for k, v in data.items()}
+    if isinstance(data, list):
+        return [clean_inf_from_dict(item) for item in data]
+    if isinstance(data, float) and (not isfinite(data) or data != data):
+        return None
+    return data
+
+
 @router.post("/summary", response_model=ReportResponse)
 async def generate_summary(request: ReportRequest):
     """Generate aggregated report with summary statistics."""
@@ -24,18 +36,20 @@ async def generate_summary(request: ReportRequest):
             f"Generating report: group_by={request.group_by}, "
             f"agg={[a.value for a in request.aggregation]}, "
             f"outliers={request.detect_outliers}, "
-            f"sheet={request.sheet_name}"
+            f"sheet={request.sheet_name}, "
+            f"sort={request.sort_by}"
         )
 
         if request.sheet_name:
             df = pd.read_excel(
                 "uploaded_files/sampledatafoodsales.xlsx",
-                sheet_name=request.sheet_name
+                sheet_name=request.sheet_name,
+                engine='openpyxl'
             )
         else:
             df = pd.read_csv("data/homes.csv")
 
-        df.columns = df.columns.str.strip('"').str.strip()
+        df.columns = df.columns.str.replace('"', '').str.strip()
         df = DataCleaner.clean_data(df)
 
         DataValidator.validate_aggregation_params(
@@ -62,6 +76,11 @@ async def generate_summary(request: ReportRequest):
             agg_list
         )
 
+        if request.sort_by == 'asc':
+            result = result.sort_values(by=request.group_by, ascending=True)
+        elif request.sort_by == 'desc':
+            result = result.sort_values(by=request.group_by, ascending=False)
+
         if request.detect_outliers:
             outliers_by_group = (
                 df.groupby(request.group_by)['is_outlier'].any()
@@ -82,6 +101,9 @@ async def generate_summary(request: ReportRequest):
             for key, value in row.items():
                 if hasattr(value, 'item'):
                     row[key] = value.item()
+
+        data = clean_inf_from_dict(data)
+        stats = clean_inf_from_dict(stats)
 
         logger.info(f"Report generated: {len(data)} rows")
         return ReportResponse(
@@ -120,12 +142,13 @@ async def download_csv(request: ReportRequest):
         if request.sheet_name:
             df = pd.read_excel(
                 "uploaded_files/sampledatafoodsales.xlsx",
-                sheet_name=request.sheet_name
+                sheet_name=request.sheet_name,
+                engine='openpyxl'
             )
         else:
             df = pd.read_csv("data/homes.csv")
 
-        df.columns = df.columns.str.strip('"').str.strip()
+        df.columns = df.columns.str.replace('"', '').str.strip()
         df = DataCleaner.clean_data(df)
 
         DataValidator.validate_aggregation_params(
@@ -151,6 +174,11 @@ async def download_csv(request: ReportRequest):
             request.aggregate_column,
             agg_list
         )
+
+        if request.sort_by == 'asc':
+            result = result.sort_values(by=request.group_by, ascending=True)
+        elif request.sort_by == 'desc':
+            result = result.sort_values(by=request.group_by, ascending=False)
 
         os.makedirs("generated_reports", exist_ok=True)
         output_path = "generated_reports/report.csv"
@@ -193,12 +221,13 @@ async def suggest_structure(request: ReportRequest):
         if request.sheet_name:
             df = pd.read_excel(
                 "uploaded_files/sampledatafoodsales.xlsx",
-                sheet_name=request.sheet_name
+                sheet_name=request.sheet_name,
+                engine='openpyxl'
             )
         else:
             df = pd.read_csv("data/homes.csv")
 
-        df.columns = df.columns.str.strip('"').str.strip()
+        df.columns = df.columns.str.replace('"', '').str.strip()
         df = DataCleaner.clean_data(df)
 
         numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
@@ -241,12 +270,13 @@ async def download_excel(request: ReportRequest):
         if request.sheet_name:
             df = pd.read_excel(
                 "uploaded_files/sampledatafoodsales.xlsx",
-                sheet_name=request.sheet_name
+                sheet_name=request.sheet_name,
+                engine='openpyxl'
             )
         else:
             df = pd.read_csv("data/homes.csv")
 
-        df.columns = df.columns.str.strip('"').str.strip()
+        df.columns = df.columns.str.replace('"', '').str.strip()
         df = DataCleaner.clean_data(df)
 
         DataValidator.validate_aggregation_params(
@@ -272,6 +302,11 @@ async def download_excel(request: ReportRequest):
             request.aggregate_column,
             agg_list
         )
+
+        if request.sort_by == 'asc':
+            result = result.sort_values(by=request.group_by, ascending=True)
+        elif request.sort_by == 'desc':
+            result = result.sort_values(by=request.group_by, ascending=False)
 
         if request.detect_outliers:
             result = OutlierDetector.highlight_outliers(result, 'sum')

@@ -9,7 +9,7 @@
 <body>
 
 <h1>Report Automation API</h1>
-<p class="subtitle">Upload a file and generate aggregated reports.</p>
+<p class="subtitle">Upload any CSV or Excel file, choose a sheet, select a column to group by, a column to aggregate, and the metrics to calculate (sum, mean, count, min, max). The tool automatically cleans data and detects outliers.</p>
 
 <section id="upload-section">
     <h2>1. Upload File</h2>
@@ -38,6 +38,13 @@
         <label>Aggregate:
             <select id="aggCol"></select>
         </label>
+        <label>Sort by:
+            <select id="sortBy">
+                <option value="none">None</option>
+                <option value="asc">Ascending</option>
+                <option value="desc">Descending</option>
+            </select>
+        </label>
         <label>Metrics:
             <label><input type="checkbox" class="metric-check" value="sum"> Sum</label>
             <label><input type="checkbox" class="metric-check" value="mean"> Mean</label>
@@ -51,6 +58,12 @@
         <button class="primary" id="reportBtn">Generate Summary</button>
         <button class="secondary" id="downloadCsvBtn">Download CSV</button>
         <button class="secondary" id="downloadExcelBtn">Download Excel</button>
+    </div>
+    <div id="reportHint" class="result-box" style="display:none; background: #e8f4fd; border: 1px solid #b8d4e8;">
+        <p><strong>📊 How to read this report:</strong></p>
+        <p id="reportExplanation">Data is grouped by the selected column. For each group, the chosen metrics (sum, mean, count, min, max) are calculated for the aggregation column. This helps to compare groups and spot patterns or outliers.</p>
+        <p><strong>Your selection:</strong></p>
+        <p id="reportHintText">Group by: <span id="hintGroupBy">-</span> | Aggregate: <span id="hintAggregate">-</span> | Metrics: <span id="hintMetrics">-</span></p>
     </div>
     <div id="reportResult" class="result-box" style="display:none;"></div>
 </section>

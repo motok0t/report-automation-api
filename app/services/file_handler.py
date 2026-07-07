@@ -25,8 +25,8 @@ class FileHandler:
 
     @staticmethod
     def _clean_columns(df: pd.DataFrame) -> pd.DataFrame:
-        """Remove quotes and strip whitespace from column names."""
-        df.columns = df.columns.str.strip('"').str.strip()
+        """Remove quotes from column names."""
+        df.columns = df.columns.str.replace('"', '').str.strip()
         return df
 
     @staticmethod
