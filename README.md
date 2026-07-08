@@ -14,13 +14,15 @@ It solves a common business problem: analysts spending hours manually cleaning a
 ## Features
 
 - **Multi-format input**: CSV, Excel (.xlsx), JSON, Parquet
-- **Data cleaning**: Automatic duplicate removal, null value handling
-- **Flexible aggregation**: Group by any column, apply multiple metrics (sum, mean, count, min, max) in one request
-- **Outlier detection**: Flag groups with anomalies (values deviating >2 standard deviations from mean)
-- **Export options**: Download reports as CSV or Excel
+- **Sheet selection**: choose specific sheets in Excel files
+- **Data cleaning**: automatic duplicate removal, null value handling, quote cleaning
+- **Flexible aggregation**: group by any column, apply multiple metrics (sum, mean, count, min, max) in one request
+- **Outlier detection**: flag groups with anomalies (values deviating >2 standard deviations from mean)
+- **Sorting**: sort results by Group by column (ascending/descending)
+- **Export options**: download reports as CSV or Excel
 - **Auto-suggest**: API recommends which columns to group and aggregate
 - **Modern stack**: FastAPI, Pandas, Docker
-- **Interactive docs**: Built-in Swagger UI at `/docs`
+- **Interactive docs**: built-in Swagger UI at `/docs`
 
 ---
 

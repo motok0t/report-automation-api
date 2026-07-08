@@ -22,6 +22,16 @@ function populateSelects(columns) {
     groupBySelect.innerHTML = '';
     aggColSelect.innerHTML = '';
 
+    const emptyOpt1 = document.createElement('option');
+    emptyOpt1.value = '';
+    emptyOpt1.textContent = '— Select —';
+    groupBySelect.appendChild(emptyOpt1);
+
+    const emptyOpt2 = document.createElement('option');
+    emptyOpt2.value = '';
+    emptyOpt2.textContent = '— Select —';
+    aggColSelect.appendChild(emptyOpt2);
+
     columns.forEach(col => {
         const opt1 = document.createElement('option');
         opt1.value = col;
@@ -51,18 +61,18 @@ function updateSelects() {
     const aggColVal = aggColSelect.value;
 
     Array.from(aggColSelect.options).forEach(opt => {
-        opt.disabled = (opt.value === groupByVal);
+        opt.disabled = (opt.value !== '' && opt.value === groupByVal);
     });
 
     Array.from(groupBySelect.options).forEach(opt => {
-        opt.disabled = (opt.value === aggColVal);
+        opt.disabled = (opt.value !== '' && opt.value === aggColVal);
     });
 
-    if (aggColSelect.value === groupByVal) {
+    if (aggColSelect.value === groupByVal && groupByVal !== '') {
         const firstEnabled = Array.from(aggColSelect.options).find(opt => !opt.disabled);
         if (firstEnabled) aggColSelect.value = firstEnabled.value;
     }
-    if (groupBySelect.value === aggColVal) {
+    if (groupBySelect.value === aggColVal && aggColVal !== '') {
         const firstEnabled = Array.from(groupBySelect.options).find(opt => !opt.disabled);
         if (firstEnabled) groupBySelect.value = firstEnabled.value;
     }
@@ -203,13 +213,19 @@ uploadBtn.onclick = async () => {
                 const sheetRes = await fetch('/upload/sheets');
                 if (sheetRes.ok) {
                     const sheetData = await sheetRes.json();
-                    sheetSelect.innerHTML = '<option value="">Select sheet...</option>';
-                    sheetData.sheets.forEach(name => {
-                        const opt = document.createElement('option');
-                        opt.value = name;
-                        opt.textContent = name;
-                        sheetSelect.appendChild(opt);
-                    });
+                    sheetSelect.innerHTML = '';
+                    if (sheetData.sheets.length > 0) {
+                        sheetData.sheets.forEach(name => {
+                            const opt = document.createElement('option');
+                            opt.value = name;
+                            opt.textContent = name;
+                            sheetSelect.appendChild(opt);
+                        });
+                        sheetSelect.value = sheetData.sheets[0];
+                        sheetSelect.dispatchEvent(new Event('change'));
+                    } else {
+                        sheetSelect.innerHTML = '<option value="">No sheets found</option>';
+                    }
                 } else {
                     sheetSelect.innerHTML = '<option value="">No sheets found</option>';
                 }

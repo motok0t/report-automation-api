@@ -23,9 +23,9 @@ def test_upload():
 def test_report_summary():
     """Test summary report generation endpoint."""
     payload = {
-        "group_by": " \"Beds\"",
-        "aggregate_column": " \"Taxes\"",
-        "aggregation": "sum"
+        "group_by": "Beds",
+        "aggregate_column": "Taxes",
+        "aggregation": ["sum"]
     }
     response = client.post("/report/summary", json=payload)
     assert response.status_code == 200
