@@ -2,16 +2,15 @@ import logging
 import os
 from math import isfinite
 
+import pandas as pd
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
-import pandas as pd
 
 from app.schemas.report_schemas import ReportRequest, ReportResponse
 from app.services.aggregator import DataAggregator
 from app.services.cleaner import DataCleaner
 from app.services.outlier import OutlierDetector
 from app.services.validators import DataValidator
-
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/report", tags=["Report"])

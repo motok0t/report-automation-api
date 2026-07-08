@@ -18,7 +18,7 @@ It solves a common business problem: analysts spending hours manually cleaning a
 - **Data cleaning**: automatic duplicate removal, null value handling, quote cleaning
 - **Flexible aggregation**: group by any column, apply multiple metrics (sum, mean, count, min, max) in one request
 - **Outlier detection**: flag groups with anomalies (values deviating >2 standard deviations from mean)
-- **Sorting**: sort results by Group by column (ascending/descending)
+- **Sorting**: sort results by field "Group by" (ascending/descending)
 - **Export options**: download reports as CSV or Excel
 - **Auto-suggest**: API recommends which columns to group and aggregate
 - **Modern stack**: FastAPI, Pandas, Docker

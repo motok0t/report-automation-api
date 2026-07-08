@@ -2,12 +2,11 @@ import logging
 import os
 from math import isfinite
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
 import pandas as pd
+from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from app.schemas.report_schemas import FileUploadResponse
 from app.services.file_handler import FileHandler
-
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/upload", tags=["Upload"])

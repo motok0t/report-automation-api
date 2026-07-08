@@ -124,6 +124,8 @@ class DataProcessor:
         styled_df['_style'] = ''
 
         outlier_mask = (df[column] < lower_bound) | (df[column] > upper_bound)
-        styled_df.loc[outlier_mask, '_style'] = 'background-color: #ffcccc; font-weight: bold;'
+        styled_df.loc[outlier_mask, '_style'] = (
+            'background-color: #ffcccc; font-weight: bold;'
+        )
 
         return styled_df
