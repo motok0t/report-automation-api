@@ -2,6 +2,7 @@ const uploadBtn = document.getElementById('uploadBtn');
 const reportBtn = document.getElementById('reportBtn');
 const downloadCsvBtn = document.getElementById('downloadCsvBtn');
 const downloadExcelBtn = document.getElementById('downloadExcelBtn');
+const downloadPdfBtn = document.getElementById('downloadPdfBtn');
 
 const uploadResult = document.getElementById('uploadResult');
 const reportResult = document.getElementById('reportResult');
@@ -230,7 +231,7 @@ uploadBtn.onclick = async () => {
                     sheetSelect.innerHTML = '<option value="">No sheets found</option>';
                 }
             } catch (e) {
-                sheetSelect.innerHTML = '<option value="">Error loading sheets</option>';
+                sheetSelect.innerHTML = '<option value="">No sheets found</option>';
             }
         } else {
             sheetSelect.innerHTML = '<option value="">No sheets available</option>';
@@ -316,3 +317,4 @@ async function downloadFile(endpoint, filename) {
 
 downloadCsvBtn.onclick = () => downloadFile('/report/download/csv', 'report.csv');
 downloadExcelBtn.onclick = () => downloadFile('/report/download/excel', 'report.xlsx');
+downloadPdfBtn.onclick = () => downloadFile('/report/download/pdf', 'report.pdf');

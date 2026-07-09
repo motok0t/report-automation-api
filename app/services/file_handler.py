@@ -25,12 +25,14 @@ class FileHandler:
 
     @staticmethod
     def _clean_columns(df: pd.DataFrame) -> pd.DataFrame:
-        """Remove quotes from column names."""
         df.columns = df.columns.str.replace('"', '').str.strip()
         return df
 
     @staticmethod
-    async def read_file(file: UploadFile) -> pd.DataFrame:
+    async def read_file(
+        file: UploadFile,
+        chunk_size: int = 0
+    ) -> pd.DataFrame:
         """Read CSV, Excel, JSON or Parquet file into DataFrame."""
         contents = await file.read()
         suffix = os.path.splitext(file.filename)[1]
@@ -47,12 +49,19 @@ class FileHandler:
                 "Unsupported format. Use CSV, Excel, JSON or Parquet."
             )
 
-        df = handler.read(temp_file.name)
+        if isinstance(handler, CSVHandler):
+            df = handler.read(temp_file.name, chunk_size=chunk_size)
+        else:
+            df = handler.read(temp_file.name)
+
         os.unlink(temp_file.name)
         return FileHandler._clean_columns(df)
 
     @staticmethod
-    def read_file_from_path(file_path: str) -> pd.DataFrame:
+    def read_file_from_path(
+        file_path: str,
+        chunk_size: int = 0
+    ) -> pd.DataFrame:
         """Read CSV, Excel, JSON or Parquet file from path into DataFrame."""
         suffix = os.path.splitext(file_path)[1]
         handler = FileHandler._handlers.get(suffix)
@@ -60,12 +69,16 @@ class FileHandler:
             raise ValueError(
                 "Unsupported format. Use CSV, Excel, JSON or Parquet."
             )
-        df = handler.read(file_path)
+
+        if isinstance(handler, CSVHandler):
+            df = handler.read(file_path, chunk_size=chunk_size)
+        else:
+            df = handler.read(file_path)
+
         return FileHandler._clean_columns(df)
 
     @staticmethod
     def save_report(df: pd.DataFrame, filename: str = "report.xlsx") -> str:
-        """Save DataFrame to file and return file path."""
         output_dir = "generated_reports"
         os.makedirs(output_dir, exist_ok=True)
 
@@ -77,12 +90,10 @@ class FileHandler:
 
     @staticmethod
     def get_file_info(df: pd.DataFrame) -> Dict[str, Any]:
-        """Return rows, columns, dtypes and memory usage of DataFrame."""
         return BaseFileHandler.get_file_info(df)
 
     @staticmethod
     def get_sheet_names(file: UploadFile) -> List[str]:
-        """Return list of sheet names from Excel file."""
         contents = file.file.read()
         temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx')
         temp_file.write(contents)
