@@ -16,6 +16,7 @@ from app.services.outlier import OutlierDetector
 from app.services.utils import get_uploaded_file_path, read_uploaded_file
 from app.services.validators import DataValidator
 
+
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/report/download", tags=["Report"])
 
@@ -68,8 +69,30 @@ async def download_pdf(request: ReportRequest):
             result = result.sort_values(by=request.group_by, ascending=False)
 
         if request.detect_outliers:
-            result = OutlierDetector.highlight_outliers(result, 'sum')
-            result = result.drop(columns=['_style'], errors='ignore')
+            outliers_by_group = (
+                df.groupby(request.group_by)['is_outlier'].any()
+            )
+            result['has_outliers'] = (
+                result[request.group_by].map(outliers_by_group)
+            )
+
+        if request.detect_outliers:
+            numeric_cols = result.select_dtypes(include=['number']).columns
+            if numeric_cols.any():
+                outlier_col = numeric_cols[0]
+                result = OutlierDetector.highlight_outliers(
+                    result, outlier_col
+                )
+                result = result.drop(columns=['_style'], errors='ignore')
+
+        for col in result.select_dtypes(include=['float']).columns:
+            if col != 'count':
+                result[col] = result[col].round(2)
+
+        if 'has_outliers' in result.columns:
+            result['has_outliers'] = result['has_outliers'].map(
+                {True: 'Yes', False: 'No'}
+            )
 
         os.makedirs("generated_reports", exist_ok=True)
         output_path = "generated_reports/report.pdf"
