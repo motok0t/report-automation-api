@@ -1,17 +1,39 @@
 import os
 import tempfile
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import pandas as pd
 from fastapi import UploadFile
 
+from app.services.handlers.base import BaseFileHandler
+from app.services.handlers.csv import CSVHandler
+from app.services.handlers.excel import ExcelHandler
+from app.services.handlers.json import JSONHandler
+from app.services.handlers.parquet import ParquetHandler
+
 
 class FileHandler:
-    """Класс для работы с загруженными файлами."""
+    """Factory class for file operations."""
+
+    _handlers = {
+        '.csv': CSVHandler(),
+        '.xlsx': ExcelHandler(),
+        '.xls': ExcelHandler(),
+        '.json': JSONHandler(),
+        '.parquet': ParquetHandler(),
+    }
 
     @staticmethod
-    async def read_file(file: UploadFile) -> pd.DataFrame:
-        """Читает CSV или Excel файл в pandas DataFrame."""
+    def _clean_columns(df: pd.DataFrame) -> pd.DataFrame:
+        df.columns = df.columns.str.replace('"', '').str.strip()
+        return df
+
+    @staticmethod
+    async def read_file(
+        file: UploadFile,
+        chunk_size: int = 0
+    ) -> pd.DataFrame:
+        """Read CSV, Excel, JSON or Parquet file into DataFrame."""
         contents = await file.read()
         suffix = os.path.splitext(file.filename)[1]
         temp_file = tempfile.NamedTemporaryFile(
@@ -21,35 +43,63 @@ class FileHandler:
         temp_file.write(contents)
         temp_file.close()
 
-        if file.filename.endswith('.csv'):
-            df = pd.read_csv(temp_file.name)
-        elif file.filename.endswith(('.xlsx', '.xls')):
-            df = pd.read_excel(temp_file.name)
-        else:
+        handler = FileHandler._handlers.get(suffix)
+        if handler is None:
             raise ValueError(
-                "Unsupported format. Use CSV or Excel."
+                "Unsupported format. Use CSV, Excel, JSON or Parquet."
             )
 
+        if isinstance(handler, CSVHandler):
+            df = handler.read(temp_file.name, chunk_size=chunk_size)
+        else:
+            df = handler.read(temp_file.name)
+
         os.unlink(temp_file.name)
-        return df
+        return FileHandler._clean_columns(df)
+
+    @staticmethod
+    def read_file_from_path(
+        file_path: str,
+        chunk_size: int = 0
+    ) -> pd.DataFrame:
+        """Read CSV, Excel, JSON or Parquet file from path into DataFrame."""
+        suffix = os.path.splitext(file_path)[1]
+        handler = FileHandler._handlers.get(suffix)
+        if handler is None:
+            raise ValueError(
+                "Unsupported format. Use CSV, Excel, JSON or Parquet."
+            )
+
+        if isinstance(handler, CSVHandler):
+            df = handler.read(file_path, chunk_size=chunk_size)
+        else:
+            df = handler.read(file_path)
+
+        return FileHandler._clean_columns(df)
 
     @staticmethod
     def save_report(df: pd.DataFrame, filename: str = "report.xlsx") -> str:
-        """Сохраняет DataFrame в Excel и возвращает путь."""
         output_dir = "generated_reports"
         os.makedirs(output_dir, exist_ok=True)
 
+        suffix = os.path.splitext(filename)[1]
+        handler = FileHandler._handlers.get(suffix, ExcelHandler())
         filepath = os.path.join(output_dir, filename)
-        df.to_excel(filepath, index=False)
+        handler.save(df, filepath)
         return filepath
 
     @staticmethod
     def get_file_info(df: pd.DataFrame) -> Dict[str, Any]:
-        """Возвращает информацию о DataFrame."""
-        return {
-            "rows": len(df),
-            "columns": len(df.columns),
-            "column_names": list(df.columns),
-            "dtypes": df.dtypes.astype(str).to_dict(),
-            "memory_usage": df.memory_usage(deep=True).sum()
-        }
+        return BaseFileHandler.get_file_info(df)
+
+    @staticmethod
+    def get_sheet_names(file: UploadFile) -> List[str]:
+        contents = file.file.read()
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx')
+        temp_file.write(contents)
+        temp_file.close()
+        try:
+            sheets = pd.read_excel(temp_file.name, sheet_name=None)
+            return list(sheets.keys())
+        finally:
+            os.unlink(temp_file.name)

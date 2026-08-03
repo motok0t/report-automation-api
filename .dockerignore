@@ -1,0 +1,13 @@
+venv/
+__pycache__/
+*.pyc
+.env
+generated_reports/
+*.log
+.pytest_cache/
+.coverage
+htmlcov/
+.git/
+.gitignore
+README.md
+docker-compose.yml
