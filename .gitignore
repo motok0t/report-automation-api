@@ -8,3 +8,4 @@ generated_reports/
 .coverage
 htmlcov/
 .DS_Store
+data/*.xlsx
