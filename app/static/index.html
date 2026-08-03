@@ -65,6 +65,11 @@
     <div class="flex-row">
         <label><input type="checkbox" id="detectOutliers"> Detect outliers</label>
     </div>
+    <div class="flex-row" id="outlierMetricRow" style="display:none;">
+        <label>Outlier metric:
+            <select id="outlierMetric"></select>
+        </label>
+    </div>
     <div class="btn-group">
         <button class="primary" id="reportBtn">Generate Summary</button>
         <button class="secondary" id="downloadCsvBtn">Download CSV</button>
@@ -82,6 +87,10 @@
         </p>
         <p style="font-size: 0.85rem; margin-top: 0.5rem;">
             <strong>Anomaly detection:</strong> values that deviate more than 2 standard deviations from the mean are marked as outliers.
+        </p>
+        <p style="font-size: 0.85rem; margin-top: 0.5rem;">
+            <strong>Note:</strong> outliers are detected based on the selected metric in the aggregated results.
+            If multiple metrics are selected, you can choose which metric to use for outlier detection.
         </p>
     </div>
 

@@ -14,15 +14,20 @@ router = APIRouter(prefix="/upload", tags=["Upload"])
 UPLOAD_DIR = "uploaded_files"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+_current_file_path = None
+
 
 @router.post("/", response_model=FileUploadResponse)
 async def upload_file(file: UploadFile = File(...)):
+    global _current_file_path
     try:
         logger.info(f"Uploading file: {file.filename}")
         file_path = os.path.join(UPLOAD_DIR, file.filename)
         contents = await file.read()
         with open(file_path, "wb") as f:
             f.write(contents)
+
+        _current_file_path = file_path
 
         df = FileHandler.read_file_from_path(file_path)
         info = FileHandler.get_file_info(df)
@@ -59,12 +64,14 @@ async def upload_file(file: UploadFile = File(...)):
 
 @router.get("/sheets")
 async def get_sheets():
-    files = os.listdir(UPLOAD_DIR)
-    if not files:
+    if _current_file_path is None:
         raise HTTPException(status_code=404, detail="No file uploaded yet.")
-    latest_file = os.path.join(UPLOAD_DIR, files[-1])
     try:
-        sheets = pd.read_excel(latest_file, sheet_name=None, engine='openpyxl')
+        sheets = pd.read_excel(
+            _current_file_path,
+            sheet_name=None,
+            engine='openpyxl'
+        )
         return {"sheets": list(sheets.keys())}
     except Exception as e:
         raise HTTPException(
@@ -75,18 +82,17 @@ async def get_sheets():
 
 @router.get("/columns")
 async def get_columns(sheet: str):
-    files = os.listdir(UPLOAD_DIR)
-    if not files:
+    if _current_file_path is None:
         raise HTTPException(status_code=404, detail="No file uploaded yet.")
-    latest_file = os.path.join(UPLOAD_DIR, files[-1])
     try:
         df = pd.read_excel(
-            latest_file,
+            _current_file_path,
             sheet_name=sheet,
             nrows=1,
-            engine='openpyxl'
+            engine='openpyxl',
+            header=0
         )
-        df.columns = df.columns.str.replace('"', '').str.strip()
+        df.columns = [str(col).replace('"', '').strip() for col in df.columns]
         numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
         categorical_cols = (
             df.select_dtypes(include=['object', 'category'])
@@ -105,7 +111,6 @@ async def get_columns(sheet: str):
 
 
 def clean_inf_from_dict(data):
-    """Recursively replace inf, -inf with None in dict/list."""
     if isinstance(data, dict):
         return {k: clean_inf_from_dict(v) for k, v in data.items()}
     if isinstance(data, list):
@@ -117,17 +122,16 @@ def clean_inf_from_dict(data):
 
 @router.get("/preview")
 async def get_preview(sheet: str):
-    files = os.listdir(UPLOAD_DIR)
-    if not files:
+    if _current_file_path is None:
         raise HTTPException(status_code=404, detail="No file uploaded yet.")
-    latest_file = os.path.join(UPLOAD_DIR, files[-1])
     try:
         df = pd.read_excel(
-            latest_file,
+            _current_file_path,
             sheet_name=sheet,
-            engine='openpyxl'
+            engine='openpyxl',
+            header=0
         )
-        df.columns = df.columns.str.replace('"', '').str.strip()
+        df.columns = [str(col).replace('"', '').strip() for col in df.columns]
         preview = df.head(5).to_dict(orient="records")
         preview = clean_inf_from_dict(preview)
         return {"preview": preview}

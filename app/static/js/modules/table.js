@@ -1,16 +1,18 @@
 export function renderTable(data) {
     if (!data || data.length === 0) return '<p>No data to display.</p>';
     const keys = Object.keys(data[0]);
-    const columnNames = keys.map(k => {
-        if (k === 'has_outliers') return 'Anomalies';
-        return k;
-    });
+    const hiddenKeys = ['is_outlier'];
+    const displayKeys = keys.filter(k => !hiddenKeys.includes(k));
+
     let html = '<table><thead><tr>';
-    columnNames.forEach(k => html += `<th>${k}</th>`);
+    displayKeys.forEach(k => {
+        const header = k === 'has_outliers' ? 'Anomalies' : k;
+        html += `<th>${header}</th>`;
+    });
     html += '</tr></thead><tbody>';
     data.forEach(row => {
         html += '<tr>';
-        keys.forEach((k) => {
+        displayKeys.forEach((k) => {
             let value = row[k] ?? '';
             if (k === 'has_outliers' && value === true) {
                 value = '🟡';

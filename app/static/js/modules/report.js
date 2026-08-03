@@ -8,10 +8,57 @@ export function setupReport() {
     const downloadPdfBtn = document.getElementById('downloadPdfBtn');
     const reportResult = document.getElementById('reportResult');
     const reportHint = document.getElementById('reportHint');
+    const outlierMetricRow = document.getElementById('outlierMetricRow');
+    const outlierMetricSelect = document.getElementById('outlierMetric');
+    const detectOutliersCheckbox = document.getElementById('detectOutliers');
+
+    const metricCheckboxes = document.querySelectorAll('.metric-check');
+
+    function updateOutlierMetricOptions() {
+        const selected = [];
+        metricCheckboxes.forEach(el => {
+            if (el.checked) selected.push(el.value);
+        });
+        outlierMetricSelect.innerHTML = '';
+        if (detectOutliersCheckbox.checked && selected.length > 1) {
+            outlierMetricRow.style.display = 'flex';
+            selected.forEach(val => {
+                const opt = document.createElement('option');
+                opt.value = val;
+                opt.textContent = val.charAt(0).toUpperCase() + val.slice(1);
+                outlierMetricSelect.appendChild(opt);
+            });
+            outlierMetricSelect.value = selected[0];
+        } else if (detectOutliersCheckbox.checked && selected.length === 1) {
+            outlierMetricRow.style.display = 'flex';
+            const val = selected[0];
+            const opt = document.createElement('option');
+            opt.value = val;
+            opt.textContent = val.charAt(0).toUpperCase() + val.slice(1);
+            outlierMetricSelect.appendChild(opt);
+            outlierMetricSelect.value = val;
+        } else {
+            outlierMetricRow.style.display = 'none';
+        }
+    }
+
+    detectOutliersCheckbox.addEventListener('change', updateOutlierMetricOptions);
+    metricCheckboxes.forEach(el => {
+        el.addEventListener('change', updateOutlierMetricOptions);
+    });
+
+    function getFullParams() {
+        const params = getParams();
+        const outlierMetric = outlierMetricSelect.value;
+        return {
+            ...params,
+            outlier_metric: outlierMetric || null
+        };
+    }
 
     async function generateReport() {
         showLoading(reportResult);
-        const params = getParams();
+        const params = getFullParams();
         if (params.aggregation.length === 0) {
             showError(reportResult, 'Please select at least one metric.');
             return;
@@ -44,13 +91,18 @@ export function setupReport() {
             reportResult.innerHTML = html;
 
             reportHint.style.display = 'block';
-            document.getElementById('hintGroupBy').textContent = params.group_by;
-            document.getElementById('hintAggregate').textContent = params.aggregate_column;
-            document.getElementById('hintMetrics').textContent = params.aggregation.join(', ');
             const sortLabel = params.sort_by === 'asc' ? 'Ascending' :
                               params.sort_by === 'desc' ? 'Descending' : 'None';
-            document.getElementById('hintSortBy').textContent =
-                `${sortLabel} (by ${params.group_by})`;
+            const outlierInfo = params.detect_outliers
+                ? ` | Outlier metric: ${params.outlier_metric || 'N/A'}`
+                : '';
+            document.getElementById('reportHintText').innerHTML = `
+                Group by: ${params.group_by} |
+                Aggregate: ${params.aggregate_column} |
+                Metrics: ${params.aggregation.join(', ')} |
+                Sort by: ${sortLabel} (by ${params.group_by})
+                ${outlierInfo}
+            `;
         } catch (e) {
             showError(reportResult, e.message);
         }
@@ -58,7 +110,7 @@ export function setupReport() {
 
     async function downloadFile(endpoint, filename) {
         try {
-            const res = await postJson(endpoint, getParams());
+            const res = await postJson(endpoint, getFullParams());
             if (!res.ok) {
                 const err = await res.json();
                 throw new Error(err.detail || 'Download failed');
@@ -75,7 +127,7 @@ export function setupReport() {
 
     reportBtn.onclick = generateReport;
     downloadCsvBtn.onclick = () => {
-        const params = getParams();
+        const params = getFullParams();
         if (params.aggregation.length === 0) {
             showError(reportResult, 'Please select at least one metric.');
             return;
@@ -83,7 +135,7 @@ export function setupReport() {
         downloadFile('/report/download/csv', 'report.csv');
     };
     downloadExcelBtn.onclick = () => {
-        const params = getParams();
+        const params = getFullParams();
         if (params.aggregation.length === 0) {
             showError(reportResult, 'Please select at least one metric.');
             return;
@@ -91,11 +143,13 @@ export function setupReport() {
         downloadFile('/report/download/excel', 'report.xlsx');
     };
     downloadPdfBtn.onclick = () => {
-        const params = getParams();
+        const params = getFullParams();
         if (params.aggregation.length === 0) {
             showError(reportResult, 'Please select at least one metric.');
             return;
         }
         downloadFile('/report/download/pdf', 'report.pdf');
     };
+
+    updateOutlierMetricOptions();
 }

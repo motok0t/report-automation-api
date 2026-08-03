@@ -27,7 +27,9 @@ async def download_csv(request: ReportRequest):
             )
 
         if request.sheet_name and file_path.endswith(('.xlsx', '.xls')):
-            df = read_uploaded_file(file_path, sheet_name=request.sheet_name)
+            df = read_uploaded_file(
+                file_path, sheet_name=request.sheet_name
+            )
         else:
             df = read_uploaded_file(file_path)
 
@@ -47,9 +49,6 @@ async def download_csv(request: ReportRequest):
                 request.filter_value
             )
 
-        if request.detect_outliers:
-            df = OutlierDetector.detect_outliers(df, request.aggregate_column)
-
         agg_list = [a.value for a in request.aggregation]
         result = DataAggregator.aggregate_data(
             df,
@@ -59,17 +58,23 @@ async def download_csv(request: ReportRequest):
         )
 
         if request.sort_by == 'asc':
-            result = result.sort_values(by=request.group_by, ascending=True)
+            result = result.sort_values(
+                by=request.group_by, ascending=True
+            )
         elif request.sort_by == 'desc':
-            result = result.sort_values(by=request.group_by, ascending=False)
+            result = result.sort_values(
+                by=request.group_by, ascending=False
+            )
 
         if request.detect_outliers:
-            outliers_by_group = (
-                df.groupby(request.group_by)['is_outlier'].any()
-            )
-            result['has_outliers'] = (
-                result[request.group_by].map(outliers_by_group)
-            )
+            outlier_col = request.outlier_metric or agg_list[0]
+            if outlier_col in result.columns:
+                temp = OutlierDetector.detect_outliers(
+                    result, outlier_col
+                )
+                result['has_outliers'] = temp['is_outlier']
+            else:
+                result['has_outliers'] = False
 
         for col in result.select_dtypes(include=['float']).columns:
             result[col] = result[col].round(2)

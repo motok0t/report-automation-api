@@ -23,6 +23,7 @@ class ReportRequest(BaseModel):
     detect_outliers: bool = False
     sheet_name: Optional[str] = None
     sort_by: Optional[str] = None
+    outlier_metric: Optional[str] = None
 
 
 class ReportResponse(BaseModel):
